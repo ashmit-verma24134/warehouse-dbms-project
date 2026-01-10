@@ -17,18 +17,22 @@ DROP TABLE IF EXISTS Producer;
 -- Producer Table
 -- =========================================
 CREATE TABLE Producer (
-    producer_id INT AUTO_INCREMENT PRIMARY KEY,
+    producer_id INT AUTO_INCREMENT,
     producer_name VARCHAR(100) NOT NULL,
-    contact_info VARCHAR(100)
-);
+    contact_info VARCHAR(100),
+
+    PRIMARY KEY (producer_id)
+) ENGINE=InnoDB;
 
 -- =========================================
 -- Product Table
 -- =========================================
 CREATE TABLE Product (
-    product_id INT AUTO_INCREMENT PRIMARY KEY,
-    product_name VARCHAR(100) NOT NULL
-);
+    product_id INT AUTO_INCREMENT,
+    product_name VARCHAR(100) NOT NULL,
+
+    PRIMARY KEY (product_id)
+) ENGINE=InnoDB;
 
 -- =========================================
 -- Producer ↔ Product (Many-to-Many)
@@ -44,13 +48,23 @@ CREATE TABLE Producer_Product (
     -- Foreign Key Constraints
     CONSTRAINT fk_pp_producer
         FOREIGN KEY (producer_id)
-        REFERENCES Producer(producer_id),
+        REFERENCES Producer(producer_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_pp_product
         FOREIGN KEY (product_id)
-        REFERENCES Product(product_id),
+        REFERENCES Product(product_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
 
     -- Business Rule Constraint
     CONSTRAINT chk_price_positive
         CHECK (price_before_tax > 0)
-);
+) ENGINE=InnoDB;
+
+-- =========================================
+-- Indexes for Efficient Access
+-- =========================================
+CREATE INDEX idx_pp_producer ON Producer_Product(producer_id);
+CREATE INDEX idx_pp_product ON Producer_Product(product_id);
