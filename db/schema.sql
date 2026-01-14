@@ -155,6 +155,7 @@ CREATE TABLE Order_Item (
     order_id INT NOT NULL,
     product_id INT NOT NULL,
     quantity INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
 
     CONSTRAINT chk_order_item_qty
         CHECK (quantity > 0),
@@ -169,17 +170,23 @@ CREATE TABLE Order_Item (
         REFERENCES Product(product_id)
 ) ENGINE=InnoDB;
 
+
+
+ALTER TABLE Order_Item
+ADD CONSTRAINT uq_order_product
+UNIQUE (order_id, product_id);
+
+
 -- =========================================
 -- View: Order Total
 -- =========================================
 CREATE VIEW v_order_total AS
-SELECT 
-    oi.order_id,
-    SUM(oi.quantity * pp.price_before_tax) AS order_total
-FROM Order_Item oi
-JOIN Producer_Product pp
-    ON oi.product_id = pp.product_id
-GROUP BY oi.order_id;
+SELECT
+    order_id,
+    SUM(quantity * unit_price) AS order_total
+FROM Order_Item
+GROUP BY order_id;
+
 
 
 
@@ -340,9 +347,14 @@ BEGIN
         SET balance = balance - total
         WHERE customer_id = NEW.customer_id;
 
-        UPDATE Inventory
-        SET reserved_qty = 0
-        WHERE warehouse_id = NEW.warehouse_id;
+        UPDATE Inventory i
+        JOIN Order_Item oi ON oi.product_id = i.product_id
+        SET
+            i.reserved_qty = i.reserved_qty - oi.quantity
+        WHERE
+            oi.order_id = NEW.order_id
+            AND i.warehouse_id = NEW.warehouse_id;
+
     END IF;
 END$$
 
