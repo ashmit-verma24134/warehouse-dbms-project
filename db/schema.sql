@@ -288,4 +288,3 @@ BEGIN
 END$$
 
 DELIMITER ;
-

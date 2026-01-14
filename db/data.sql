@@ -57,3 +57,34 @@ INSERT IGNORE INTO Producer_Product (producer_id, product_id, price_before_tax) 
 (5, 13, 30.00),
 (5, 14, 30.00),
 (5, 15, 30.00);
+
+
+-- =========================================
+-- Insert Customers
+-- =========================================
+INSERT IGNORE INTO Customer (customer_id, customer_name, email) VALUES
+(1, 'Test Customer', 'test@example.com'),
+(2, 'Rahul Sharma', 'rahul@gmail.com');
+
+-- =========================================
+-- Insert Warehouses
+-- =========================================
+INSERT IGNORE INTO Warehouse (warehouse_id, warehouse_name, total_capacity, used_capacity) VALUES
+(1, 'Main Warehouse', 1000, 200);
+
+-- =========================================
+-- Insert Inventory
+-- =========================================
+INSERT IGNORE INTO Inventory (warehouse_id, product_id, available_qty, reserved_qty) VALUES
+(1, 1, 100, 0),
+(1, 2, 100, 0),
+(1, 3, 50, 0),
+(1, 4, 50, 0),
+(1, 5, 30, 0);
+
+-- =========================================
+-- Insert Wallets
+-- =========================================
+INSERT IGNORE INTO Wallet (customer_id, balance) VALUES
+(1, 1000.00),
+(2, 500.00);
