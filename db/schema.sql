@@ -10,6 +10,8 @@ USE supplychain_db;
 -- =========================================
 -- Drop tables (order matters because of FKs)
 -- =========================================
+DROP TABLE IF EXISTS Order_Item;
+DROP TABLE IF EXISTS `Order`;
 
 DROP TABLE IF EXISTS Inventory;
 DROP TABLE IF EXISTS Batch;
@@ -123,6 +125,48 @@ CREATE TABLE Wallet (
 ) ENGINE=InnoDB;
 
 -- =========================================
+-- Order Table (Customer Intent)
+-- =========================================
+CREATE TABLE `Order` (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    warehouse_id INT NOT NULL,
+    order_status ENUM('CREATED', 'CONFIRMED', 'FAILED') NOT NULL DEFAULT 'CREATED',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_order_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES Customer(customer_id),
+
+    CONSTRAINT fk_order_warehouse
+        FOREIGN KEY (warehouse_id)
+        REFERENCES Warehouse(warehouse_id)
+) ENGINE=InnoDB;
+
+-- =========================================
+-- Order Item Table
+-- =========================================
+CREATE TABLE Order_Item (
+    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+
+    CONSTRAINT chk_order_item_qty
+        CHECK (quantity > 0),
+
+    CONSTRAINT fk_order_item_order
+        FOREIGN KEY (order_id)
+        REFERENCES `Order`(order_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_order_item_product
+        FOREIGN KEY (product_id)
+        REFERENCES Product(product_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
 -- Batch Table (Procurement)
 -- =========================================
 CREATE TABLE Batch (
@@ -209,3 +253,38 @@ END$$
 
 DELIMITER ;
 
+-- =========================================
+-- Trigger: Reserve Inventory on Order Item
+-- =========================================
+DELIMITER $$
+
+CREATE TRIGGER trg_before_order_item_insert
+BEFORE INSERT ON Order_Item
+FOR EACH ROW
+BEGIN
+    DECLARE avail INT;
+
+    SELECT available_qty
+    INTO avail
+    FROM Inventory
+    WHERE warehouse_id = (
+        SELECT warehouse_id FROM `Order` WHERE order_id = NEW.order_id
+    )
+    AND product_id = NEW.product_id;
+
+    IF avail IS NULL OR avail < NEW.quantity THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient stock available';
+    END IF;
+
+    UPDATE Inventory
+    SET
+        available_qty = available_qty - NEW.quantity,
+        reserved_qty = reserved_qty + NEW.quantity
+    WHERE warehouse_id = (
+        SELECT warehouse_id FROM `Order` WHERE order_id = NEW.order_id
+    )
+    AND product_id = NEW.product_id;
+END$$
+
+DELIMITER ;
