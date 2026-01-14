@@ -246,6 +246,92 @@ def test_failure():
         if conn:
             conn.close()
 
+@app.route("/demo/inventory")
+def demo_inventory():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+        SELECT w.warehouse_name,
+               p.product_name,
+               i.available_qty,
+               i.reserved_qty
+        FROM Inventory i
+        JOIN Warehouse w ON i.warehouse_id = w.warehouse_id
+        JOIN Product p ON i.product_id = p.product_id;
+        """
+        cursor.execute(query)
+        data = cursor.fetchall()
+
+        return jsonify(data), 200
+
+    except Exception:
+        return jsonify({"error": "Unable to fetch inventory data"}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.route("/demo/orders")
+def demo_orders():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+        SELECT o.order_id,
+               c.customer_name,
+               w.warehouse_name,
+               o.order_status,
+               o.created_at
+        FROM `order` o
+        JOIN Customer c ON o.customer_id = c.customer_id
+        JOIN Warehouse w ON o.warehouse_id = w.warehouse_id
+        ORDER BY o.order_id DESC;
+        """
+        cursor.execute(query)
+        orders = cursor.fetchall()
+
+        return jsonify(orders), 200
+
+    except Exception:
+        return jsonify({"error": "Unable to fetch orders"}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.route("/demo/wallets")
+def demo_wallets():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+        SELECT c.customer_name,
+               w.balance
+        FROM Wallet w
+        JOIN Customer c ON w.customer_id = c.customer_id;
+        """
+        cursor.execute(query)
+        wallets = cursor.fetchall()
+
+        return jsonify(wallets), 200
+
+    except Exception:
+        return jsonify({"error": "Unable to fetch wallet data"}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Route not found"}), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    return jsonify({"error": "Internal server error"}), 500
+
 
 # ---------- RUN SERVER ----------
 if __name__ == "__main__":
