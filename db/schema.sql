@@ -10,6 +10,10 @@ USE supplychain_db;
 -- =========================================
 -- Drop tables (order matters because of FKs)
 -- =========================================
+
+DROP TABLE IF EXISTS Inventory;
+DROP TABLE IF EXISTS Batch;
+
 DROP TABLE IF EXISTS Wallet;
 DROP TABLE IF EXISTS Customer;
 DROP TABLE IF EXISTS Warehouse;
@@ -17,6 +21,8 @@ DROP TABLE IF EXISTS Warehouse;
 DROP TABLE IF EXISTS Producer_Product;
 DROP TABLE IF EXISTS Product;
 DROP TABLE IF EXISTS Producer;
+
+
 
 -- =========================================
 -- Producer Table
@@ -115,3 +121,91 @@ CREATE TABLE Wallet (
         REFERENCES Customer(customer_id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- =========================================
+-- Batch Table (Procurement)
+-- =========================================
+CREATE TABLE Batch (
+    batch_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    producer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    warehouse_id INT NOT NULL,
+
+    quantity INT NOT NULL,
+    unit_cost DECIMAL(10,2) NOT NULL,
+    arrival_date DATE NOT NULL,
+
+    CONSTRAINT chk_batch_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_batch_unit_cost CHECK (unit_cost > 0),
+
+    CONSTRAINT fk_batch_producer
+        FOREIGN KEY (producer_id) REFERENCES Producer(producer_id),
+
+    CONSTRAINT fk_batch_product
+        FOREIGN KEY (product_id) REFERENCES Product(product_id),
+
+    CONSTRAINT fk_batch_warehouse
+        FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- Inventory Table (Current Stock)
+-- =========================================
+CREATE TABLE Inventory (
+    inventory_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    warehouse_id INT NOT NULL,
+    product_id INT NOT NULL,
+
+    available_qty INT NOT NULL DEFAULT 0,
+    reserved_qty INT NOT NULL DEFAULT 0,
+
+    CONSTRAINT chk_inventory_available CHECK (available_qty >= 0),
+    CONSTRAINT chk_inventory_reserved CHECK (reserved_qty >= 0),
+
+    CONSTRAINT uq_inventory UNIQUE (warehouse_id, product_id),
+
+    CONSTRAINT fk_inventory_warehouse
+        FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id),
+
+    CONSTRAINT fk_inventory_product
+        FOREIGN KEY (product_id) REFERENCES Product(product_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- Trigger: Update Inventory & Enforce Capacity
+-- =========================================
+DELIMITER $$
+
+CREATE TRIGGER trg_after_batch_insert
+AFTER INSERT ON Batch
+FOR EACH ROW
+BEGIN
+    DECLARE current_used INT;
+    DECLARE total_cap INT;
+
+    SELECT used_capacity, total_capacity
+    INTO current_used, total_cap
+    FROM Warehouse
+    WHERE warehouse_id = NEW.warehouse_id;
+
+    IF current_used + NEW.quantity > total_cap THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Warehouse capacity exceeded';
+    END IF;
+
+    INSERT INTO Inventory (warehouse_id, product_id, available_qty, reserved_qty)
+    VALUES (NEW.warehouse_id, NEW.product_id, NEW.quantity, 0)
+    ON DUPLICATE KEY UPDATE
+        available_qty = available_qty + NEW.quantity;
+
+    UPDATE Warehouse
+    SET used_capacity = used_capacity + NEW.quantity
+    WHERE warehouse_id = NEW.warehouse_id;
+END$$
+
+DELIMITER ;
+
