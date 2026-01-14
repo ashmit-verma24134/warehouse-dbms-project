@@ -10,6 +10,10 @@ USE supplychain_db;
 -- =========================================
 -- Drop tables (order matters because of FKs)
 -- =========================================
+DROP VIEW IF EXISTS v_staff_inventory;
+DROP VIEW IF EXISTS v_customer_products;
+DROP VIEW IF EXISTS v_order_total;
+
 DROP TABLE IF EXISTS Order_Item;
 DROP TABLE IF EXISTS `Order`;
 
@@ -165,6 +169,19 @@ CREATE TABLE Order_Item (
         REFERENCES Product(product_id)
 ) ENGINE=InnoDB;
 
+-- =========================================
+-- View: Order Total
+-- =========================================
+CREATE VIEW v_order_total AS
+SELECT 
+    oi.order_id,
+    SUM(oi.quantity * pp.price_before_tax) AS order_total
+FROM Order_Item oi
+JOIN Producer_Product pp
+    ON oi.product_id = pp.product_id
+GROUP BY oi.order_id;
+
+
 
 -- =========================================
 -- Batch Table (Procurement)
@@ -288,3 +305,72 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+-- =========================================
+-- Trigger: Wallet Debit on Order Confirm
+-- =========================================
+DELIMITER $$
+
+CREATE TRIGGER trg_after_order_confirm
+AFTER UPDATE ON `Order`
+FOR EACH ROW
+BEGIN
+    DECLARE total DECIMAL(10,2);
+    DECLARE bal DECIMAL(10,2);
+
+    IF OLD.order_status = 'CREATED'
+       AND NEW.order_status = 'CONFIRMED' THEN
+
+        SELECT order_total
+        INTO total
+        FROM v_order_total
+        WHERE order_id = NEW.order_id;
+
+        SELECT balance
+        INTO bal
+        FROM Wallet
+        WHERE customer_id = NEW.customer_id;
+
+        IF bal < total THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Insufficient wallet balance';
+        END IF;
+
+        UPDATE Wallet
+        SET balance = balance - total
+        WHERE customer_id = NEW.customer_id;
+
+        UPDATE Inventory
+        SET reserved_qty = 0
+        WHERE warehouse_id = NEW.warehouse_id;
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- =========================================
+-- View: Customer Products
+-- =========================================
+CREATE VIEW v_customer_products AS
+SELECT
+    p.product_name,
+    pp.price_before_tax AS price,
+    i.available_qty
+FROM Product p
+JOIN Producer_Product pp ON p.product_id = pp.product_id
+JOIN Inventory i ON p.product_id = i.product_id;
+
+
+-- =========================================
+-- View: Staff Inventory
+-- =========================================
+CREATE VIEW v_staff_inventory AS
+SELECT
+    w.warehouse_name,
+    p.product_name,
+    i.available_qty,
+    i.reserved_qty
+FROM Inventory i
+JOIN Warehouse w ON i.warehouse_id = w.warehouse_id
+JOIN Product p ON i.product_id = p.product_id;
+
