@@ -11,8 +11,10 @@ USE supplychain_db;
 SELECT
     producer_id,
     producer_name,
-    contact_info
+    phone,
+    email
 FROM Producer;
+
 
 -- =========================================
 -- 2. View all products

@@ -10,6 +10,10 @@ USE supplychain_db;
 -- =========================================
 -- Drop tables (order matters because of FKs)
 -- =========================================
+DROP VIEW IF EXISTS v_warehouse_summary;
+DROP VIEW IF EXISTS v_low_stock_products;
+DROP TABLE IF EXISTS Reorder_Config;
+
 DROP VIEW IF EXISTS v_staff_inventory;
 DROP VIEW IF EXISTS v_customer_products;
 DROP VIEW IF EXISTS v_order_total;
@@ -34,12 +38,17 @@ DROP TABLE IF EXISTS Producer;
 -- Producer Table
 -- =========================================
 CREATE TABLE Producer (
-    producer_id INT AUTO_INCREMENT,
+    producer_id INT AUTO_INCREMENT PRIMARY KEY,
     producer_name VARCHAR(100) NOT NULL,
-    contact_info VARCHAR(100),
 
-    PRIMARY KEY (producer_id)
+    -- Composite attribute: contact_info
+    phone VARCHAR(15) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+
+    approval_status ENUM('Pending','Approved','Rejected')
+        NOT NULL DEFAULT 'Pending'
 ) ENGINE=InnoDB;
+
 
 -- =========================================
 -- Product Table
@@ -50,6 +59,12 @@ CREATE TABLE Product (
 
     PRIMARY KEY (product_id)
 ) ENGINE=InnoDB;
+
+ALTER TABLE Product
+ADD CONSTRAINT uq_product_name UNIQUE (product_name);
+
+ALTER TABLE Product
+ADD COLUMN category VARCHAR(50);
 
 -- =========================================
 -- Producer ↔ Product (Many-to-Many)
@@ -77,6 +92,11 @@ CREATE TABLE Producer_Product (
         CHECK (price_before_tax > 0)
 ) ENGINE=InnoDB;
 
+ALTER TABLE Producer_Product
+ADD COLUMN max_batch_limit INT NOT NULL
+CHECK (max_batch_limit > 0);
+
+
 -- =========================================
 -- Indexes for Efficient Access
 -- =========================================
@@ -102,14 +122,35 @@ CREATE TABLE Warehouse (
         CHECK (used_capacity <= total_capacity)
 ) ENGINE=InnoDB;
 
+
+-- =========================================
+-- Admin Table (1:1 with Warehouse)
+-- =========================================
+CREATE TABLE Admin (
+    admin_id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_name VARCHAR(100) NOT NULL,
+    warehouse_id INT NOT NULL UNIQUE,
+
+    CONSTRAINT fk_admin_warehouse
+        FOREIGN KEY (warehouse_id)
+        REFERENCES Warehouse(warehouse_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
 -- =========================================
 -- Customer Table
 -- =========================================
 CREATE TABLE Customer (
     customer_id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_name VARCHAR(100) NOT NULL,
+
+    -- Composite attribute: customer_name
+    first_name VARCHAR(50) NOT NULL,
+    last_name  VARCHAR(50) NOT NULL,
+
     email VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
+
 
 -- =========================================
 -- Wallet Table (1-to-1 with Customer)
@@ -135,7 +176,7 @@ CREATE TABLE `Order` (
     order_id INT AUTO_INCREMENT PRIMARY KEY,
     customer_id INT NOT NULL,
     warehouse_id INT NOT NULL,
-    order_status ENUM('CREATED', 'CONFIRMED', 'FAILED') NOT NULL DEFAULT 'CREATED',
+    order_status ENUM('CREATED', 'CONFIRMED', 'FAILED','DISPATCHED','DELIVERED') NOT NULL DEFAULT 'CREATED',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_order_customer
@@ -171,10 +212,13 @@ CREATE TABLE Order_Item (
 ) ENGINE=InnoDB;
 
 
-
 ALTER TABLE Order_Item
 ADD CONSTRAINT uq_order_product
 UNIQUE (order_id, product_id);
+
+ALTER TABLE Order_Item
+ADD COLUMN unit_price_with_tax DECIMAL(10,2)
+GENERATED ALWAYS AS (unit_price * 1.20) STORED;
 
 
 -- =========================================
@@ -240,6 +284,38 @@ CREATE TABLE Inventory (
 
     CONSTRAINT fk_inventory_product
         FOREIGN KEY (product_id) REFERENCES Product(product_id)
+) ENGINE=InnoDB;
+
+CREATE VIEW v_inventory_stock AS
+SELECT
+    inventory_id,
+    warehouse_id,
+    product_id,
+    available_qty,
+    reserved_qty,
+    (available_qty + reserved_qty) AS current_stock
+FROM Inventory;
+
+-- =========================================
+-- Reorder Configuration Table
+-- =========================================
+CREATE TABLE Reorder_Config (
+    product_id INT NOT NULL,
+    warehouse_id INT NOT NULL,
+    min_threshold INT NOT NULL,
+
+    CONSTRAINT chk_min_threshold
+        CHECK (min_threshold > 0),
+
+    CONSTRAINT uq_reorder UNIQUE (product_id, warehouse_id),
+
+    CONSTRAINT fk_reorder_product
+        FOREIGN KEY (product_id)
+        REFERENCES Product(product_id),
+
+    CONSTRAINT fk_reorder_warehouse
+        FOREIGN KEY (warehouse_id)
+        REFERENCES Warehouse(warehouse_id)
 ) ENGINE=InnoDB;
 
 
@@ -365,12 +441,15 @@ DELIMITER ;
 -- =========================================
 CREATE VIEW v_customer_products AS
 SELECT
+    w.warehouse_name,
     p.product_name,
     pp.price_before_tax AS price,
     i.available_qty
-FROM Product p
-JOIN Producer_Product pp ON p.product_id = pp.product_id
-JOIN Inventory i ON p.product_id = i.product_id;
+FROM Inventory i
+JOIN Warehouse w ON i.warehouse_id = w.warehouse_id
+JOIN Product p ON i.product_id = p.product_id
+JOIN Producer_Product pp ON p.product_id = pp.product_id;
+
 
 
 -- =========================================
@@ -386,3 +465,33 @@ FROM Inventory i
 JOIN Warehouse w ON i.warehouse_id = w.warehouse_id
 JOIN Product p ON i.product_id = p.product_id;
 
+-- =========================================
+-- View: Low Stock Products
+-- =========================================
+CREATE VIEW v_low_stock_products AS
+SELECT
+    w.warehouse_name,
+    p.product_name,
+    i.available_qty,
+    r.min_threshold
+FROM Inventory i
+JOIN Reorder_Config r
+    ON i.product_id = r.product_id
+   AND i.warehouse_id = r.warehouse_id
+JOIN Warehouse w
+    ON i.warehouse_id = w.warehouse_id
+JOIN Product p
+    ON i.product_id = p.product_id
+WHERE i.available_qty < r.min_threshold;
+
+-- =========================================
+-- View: Warehouse Summary
+-- =========================================
+CREATE VIEW v_warehouse_summary AS
+SELECT
+    warehouse_name,
+    total_capacity,
+    used_capacity,
+    (total_capacity - used_capacity) AS free_capacity,
+    ROUND((used_capacity / total_capacity) * 100, 2) AS utilization_percent
+FROM Warehouse;

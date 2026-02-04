@@ -4,6 +4,7 @@ from mysql.connector import Error
 from flask import request
 
 
+
 app = Flask(__name__)
 
 # ---------- DB CONNECTION ----------
@@ -323,6 +324,53 @@ def demo_wallets():
     finally:
         cursor.close()
         conn.close()
+
+# =====================================================
+# ANALYTICS ROUTES (READ-ONLY)
+# =====================================================
+
+@app.route("/analytics/low-stock")
+def analytics_low_stock():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM v_low_stock_products;")
+        data = cursor.fetchall()
+
+        return jsonify(data), 200
+
+    except Exception:
+        return jsonify({
+            "error": "Unable to fetch low stock analytics"
+        }), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route("/analytics/warehouse-summary")
+def analytics_warehouse_summary():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM v_warehouse_summary;")
+        data = cursor.fetchall()
+
+        return jsonify(data), 200
+
+    except Exception:
+        return jsonify({
+            "error": "Unable to fetch warehouse summary analytics"
+        }), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Route not found"}), 404
@@ -331,6 +379,8 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
+
+
 
 
 # ---------- RUN SERVER ----------
