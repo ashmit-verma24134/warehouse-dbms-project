@@ -1,79 +1,121 @@
 CREATE DATABASE IF NOT EXISTS supplychain_db;
 USE supplychain_db;
 
---Drop table and views solely for debugging purpose so that we can rerun schema without overwriting previous schemas 
+-- Drop table and views solely for debugging purpose so that we can rerun schema without overwriting previous schemas 
+DROP VIEW IF EXISTS v_warehouse_financial_dashboard;
+DROP VIEW IF EXISTS v_warehouse_profit;
+DROP VIEW IF EXISTS v_warehouse_cost;
+DROP VIEW IF EXISTS v_warehouse_revenue;
 DROP VIEW IF EXISTS v_warehouse_summary;
 DROP VIEW IF EXISTS v_low_stock_products;
-DROP TABLE IF EXISTS Reorder_Config;
 DROP VIEW IF EXISTS v_staff_inventory;
 DROP VIEW IF EXISTS v_customer_products;
 DROP VIEW IF EXISTS v_order_total;
+DROP VIEW IF EXISTS v_inventory_stock;
+
+DROP TABLE IF EXISTS Reorder_Config;
 DROP TABLE IF EXISTS Order_Item;
 DROP TABLE IF EXISTS `Order`;
 DROP TABLE IF EXISTS Inventory;
 DROP TABLE IF EXISTS Batch;
 DROP TABLE IF EXISTS Wallet;
 DROP TABLE IF EXISTS Customer;
+DROP TABLE IF EXISTS Admin;
 DROP TABLE IF EXISTS Warehouse;
 DROP TABLE IF EXISTS Producer_Product;
 DROP TABLE IF EXISTS Product;
 DROP TABLE IF EXISTS Producer;
 
--- Producer Table
+-- ==============================
+-- PRODUCER TABLE
+-- ==============================
 CREATE TABLE Producer (
-    producer_id INT AUTO_INCREMENT PRIMARY KEY, --db generate ids automatically
+    producer_id INT AUTO_INCREMENT PRIMARY KEY,
     producer_name VARCHAR(100) NOT NULL,
-    --Composite attribute Contact info
     phone VARCHAR(15) NOT NULL,
     email VARCHAR(100) NOT NULL,
-    
-    --Business logic if producer registers his  product admin will allow if his product shipment to warehouse is approved/pending/rejected
     approval_status ENUM('Pending','Approved','Rejected')
-        NOT NULL DEFAULT 'Pending' --automatic status pending
-)ENGINE=InnoDB;
+        NOT NULL DEFAULT 'Pending'
+) ENGINE=InnoDB;
 
 
---Product Table
+-- ==============================
+-- PRODUCT TABLE
+-- (Product type only)
+-- ==============================
 CREATE TABLE Product (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
-    product_name VARCHAR(100) NOT NULL UNIQUE,
-    category VARCHAR(50)  --Group to which product belongs too
-)ENGINE=InnoDB;
+    product_name VARCHAR(100) NOT NULL,
+    category VARCHAR(50),
 
---Producer_prodcut table many to many (supplies relationship):-
+    -- If you keep UNIQUE, only one "Atta" can exist
+    INDEX idx_product_name (product_name)
+) ENGINE=InnoDB;
+
+
+-- ==============================
+-- PRODUCER_PRODUCT (SUPPLIES)
+-- M:N Relationship Table
+-- ==============================
 CREATE TABLE Producer_Product (
     producer_id INT NOT NULL,
     product_id  INT NOT NULL,
 
-    -- Relationship attributes (SUPPLIES)
+    -- Relationship attributes
     price_before_tax DECIMAL(10,2) NOT NULL,
-    max_batch_limit  INT NOT NULL, --Maxm quantity allowed per suplly batch
+    max_batch_limit  INT NOT NULL,
 
-    PRIMARY KEY (producer_id, product_id), --M:N
+    PRIMARY KEY (producer_id, product_id),
 
-    CONSTRAINT fk_pp_producer
-        FOREIGN KEY (producer_id)
+    FOREIGN KEY (producer_id)
         REFERENCES Producer(producer_id)
-        ON DELETE RESTRICT  --Cant delete parent row if it exists inn child row
-        ON UPDATE CASCADE,  --On update 
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
 
-    CONSTRAINT fk_pp_product
-        FOREIGN KEY (product_id)
+    FOREIGN KEY (product_id)
         REFERENCES Product(product_id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    CONSTRAINT chk_price_positive
-        CHECK (price_before_tax > 0),
+    CHECK (price_before_tax > 0),
+    CHECK (max_batch_limit > 0)
+) ENGINE=InnoDB;
 
-    CONSTRAINT chk_max_batch_limit
-        CHECK (max_batch_limit > 0)
-)ENGINE=InnoDB;
 
---Indexes for direct search(fast search)
---Using a B-Tree for indexing
+-- Optional indexes (composite PK already indexed)
 CREATE INDEX idx_pp_producer ON Producer_Product(producer_id);
-CREATE INDEX idx_pp_product ON Producer_Product(product_id);
+CREATE INDEX idx_pp_product  ON Producer_Product(product_id);
+
+
+
+
+-- Warehouse Table
+CREATE TABLE Warehouse (
+    warehouse_id INT AUTO_INCREMENT PRIMARY KEY,
+    warehouse_name VARCHAR(100) NOT NULL,
+
+    total_capacity INT NOT NULL,
+    used_capacity INT NOT NULL,
+
+    -- NEW FIELD
+    budget DECIMAL(12,2) NOT NULL,
+
+    CONSTRAINT chk_total_capacity CHECK (total_capacity > 0),
+    CONSTRAINT chk_used_capacity_nonneg CHECK (used_capacity >= 0),
+    CONSTRAINT chk_used_le_total CHECK (used_capacity <= total_capacity),
+    CONSTRAINT chk_budget_nonneg CHECK (budget >= 0)
+) ENGINE=InnoDB;
+
+-- Admin Table (1:1 with Warehouse)
+CREATE TABLE Admin (
+    admin_id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_name VARCHAR(100) NOT NULL,
+    warehouse_id INT NOT NULL UNIQUE, -- No two admins can reference the same warehouse 
+    CONSTRAINT fk_admin_warehouse
+        FOREIGN KEY (warehouse_id)
+        REFERENCES Warehouse(warehouse_id)
+        ON DELETE CASCADE
+)ENGINE=InnoDB;
 
 -- Batch Table
 CREATE TABLE Batch (
@@ -98,36 +140,6 @@ CREATE TABLE Batch (
 
     CONSTRAINT fk_batch_warehouse
         FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id)
-)ENGINE=InnoDB;
-
-
-
---Warehouse Table
-CREATE TABLE Warehouse (
-    warehouse_id INT AUTO_INCREMENT PRIMARY KEY,  --RN Inntentionally multiple 
-    warehouse_name VARCHAR(100) NOT NULL,
-    total_capacity INT NOT NULL,
-    used_capacity INT NOT NULL,
-
-    CONSTRAINT chk_total_capacity
-        CHECK (total_capacity > 0),
-
-    CONSTRAINT chk_used_capacity_nonneg
-        CHECK (used_capacity >= 0),
-
-    CONSTRAINT chk_used_le_total
-        CHECK (used_capacity <= total_capacity)
-) ENGINE=InnoDB;
-
---Admin Table (1:1 with Warehouse)
-CREATE TABLE Admin (
-    admin_id INT AUTO_INCREMENT PRIMARY KEY,
-    admin_name VARCHAR(100) NOT NULL,
-    warehouse_id INT NOT NULL UNIQUE, --No two admins can reference the same warehouse 
-    CONSTRAINT fk_admin_warehouse
-        FOREIGN KEY (warehouse_id)
-        REFERENCES Warehouse(warehouse_id)
-        ON DELETE CASCADE
 )ENGINE=InnoDB;
 
 
@@ -158,61 +170,89 @@ CREATE TABLE Wallet (
         ON DELETE CASCADE
 )ENGINE=InnoDB;
 
--- Order Table 
-CREATE TABLE `Order`(
+CREATE TABLE `Order` (
     order_id INT AUTO_INCREMENT PRIMARY KEY,
+
     customer_id INT NOT NULL,
     warehouse_id INT NOT NULL,
-    order_status ENUM('CREATED', 'CONFIRMED', 'FAILED','DISPATCHED','DELIVERED') NOT NULL DEFAULT 'CREATED',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
+    order_status ENUM(
+        'CREATED',
+        'CONFIRMED',
+        'FAILED',
+        'DISPATCHED',
+        'DELIVERED'
+    ) NOT NULL DEFAULT 'CREATED',
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Derived totals maintained by triggers
+    total_items INT NOT NULL DEFAULT 0,
+    total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+
+    -- Foreign keys
     CONSTRAINT fk_order_customer
         FOREIGN KEY (customer_id)
-        REFERENCES Customer(customer_id),
+        REFERENCES Customer(customer_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_order_warehouse
         FOREIGN KEY (warehouse_id)
         REFERENCES Warehouse(warehouse_id)
-)ENGINE=InnoDB;
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
 
+    -- Helpful indexes for query performance
+    INDEX idx_order_customer (customer_id),
+    INDEX idx_order_warehouse (warehouse_id),
+    INDEX idx_order_status (order_status)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_order_created 
+ON `Order`(created_at);
+-- Order Item Table
 -- Order Item Table
 CREATE TABLE Order_Item (
     order_item_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id   INT NOT NULL,
+
+    order_id INT NOT NULL,
     product_id INT NOT NULL,
-    quantity   INT NOT NULL,
+
+    quantity INT NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
 
     -- Derived attribute (20% tax)
     unit_price_with_tax DECIMAL(10,2)
         GENERATED ALWAYS AS (unit_price * 1.20) STORED,
 
-    -- Prevent duplicate products in the same order
-    CONSTRAINT uq_order_product
-        UNIQUE (order_id, product_id),
+    -- Prevent duplicate product per order
+    CONSTRAINT uq_order_product UNIQUE (order_id, product_id),
 
-    -- Domain constraint
-    CONSTRAINT chk_order_item_qty
-        CHECK (quantity > 0),
+    -- Domain constraints
+    CONSTRAINT chk_order_item_qty CHECK (quantity > 0),
+    CONSTRAINT chk_order_item_price CHECK (unit_price > 0),
 
-    -- Referential integrity
+    -- Foreign keys
     CONSTRAINT fk_order_item_order
         FOREIGN KEY (order_id)
         REFERENCES `Order`(order_id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_order_item_product
         FOREIGN KEY (product_id)
         REFERENCES Product(product_id)
-)ENGINE=InnoDB;
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
 
 
--- View: Order Total
 CREATE VIEW v_order_total AS
 SELECT
     order_id,
-    SUM(quantity * unit_price) AS order_total
+    SUM(quantity * unit_price_with_tax) AS order_total_with_tax
 FROM Order_Item
 GROUP BY order_id;
 
@@ -240,6 +280,13 @@ CREATE TABLE Inventory (
         FOREIGN KEY (product_id) REFERENCES Product(product_id)
 ) ENGINE=InnoDB;
 
+
+
+CREATE INDEX idx_inventory_product 
+ON Inventory(product_id);
+
+CREATE INDEX idx_inventory_warehouse 
+ON Inventory(warehouse_id);
 
 CREATE VIEW v_inventory_stock AS
 SELECT
@@ -273,35 +320,79 @@ CREATE TABLE Reorder_Config (
 ) ENGINE=InnoDB;
 
 
---Trigger: Update Inventory & Enforce Capacity
---Whenever a new batch arrives, this trigger checks warehouse capacity and updates inventory automatically.
+-- Trigger:Update Inventory & Enforce Capacity
+-- Whenever a new batch arrives, this trigger checks warehouse capacity and updates inventory automatically.
 DELIMITER $$
 
-CREATE TRIGGER trg_after_batch_insert
-AFTER INSERT ON Batch
+CREATE TRIGGER trg_before_batch_insert
+BEFORE INSERT ON Batch
 FOR EACH ROW
 BEGIN
     DECLARE current_used INT;
     DECLARE total_cap INT;
 
+    DECLARE purchase_cost DECIMAL(12,2);
+    DECLARE warehouse_budget DECIMAL(12,2);
+
+    -- NEW VARIABLE
+    DECLARE prod_status VARCHAR(20);
+
+    -- Check if producer is approved
+    SELECT approval_status
+    INTO prod_status
+    FROM Producer
+    WHERE producer_id = NEW.producer_id;
+
+    IF prod_status <> 'Approved' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Producer not approved';
+    END IF;
+
+    -- Get warehouse capacity
     SELECT used_capacity, total_capacity
     INTO current_used, total_cap
     FROM Warehouse
     WHERE warehouse_id = NEW.warehouse_id;
 
+    IF current_used + NEW.quantity < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid capacity calculation';
+    END IF;
+
+    -- Check capacity
     IF current_used + NEW.quantity > total_cap THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Warehouse capacity exceeded';
     END IF;
 
+    -- Calculate purchase cost
+    SET purchase_cost = NEW.quantity * NEW.unit_cost;
+
+    -- Get warehouse budget
+    SELECT budget
+    INTO warehouse_budget
+    FROM Warehouse
+    WHERE warehouse_id = NEW.warehouse_id;
+
+    -- Check warehouse budget
+    IF warehouse_budget < purchase_cost THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Warehouse budget exceeded';
+    END IF;
+
+    -- Update inventory
     INSERT INTO Inventory (warehouse_id, product_id, available_qty, reserved_qty)
     VALUES (NEW.warehouse_id, NEW.product_id, NEW.quantity, 0)
     ON DUPLICATE KEY UPDATE
         available_qty = available_qty + NEW.quantity;
 
+    -- Update warehouse capacity and budget
     UPDATE Warehouse
-    SET used_capacity = used_capacity + NEW.quantity
+    SET 
+        used_capacity = used_capacity + NEW.quantity,
+        budget = budget - purchase_cost
     WHERE warehouse_id = NEW.warehouse_id;
+
 END$$
 
 DELIMITER ;
@@ -315,33 +406,116 @@ BEFORE INSERT ON Order_Item
 FOR EACH ROW
 BEGIN
     DECLARE avail INT;
+    DECLARE wh_id INT;
 
+    -- Get warehouse of the order
+    SELECT warehouse_id
+    INTO wh_id
+    FROM `Order`
+    WHERE order_id = NEW.order_id;
+
+    IF wh_id IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Order not found';
+    END IF;
+
+    -- Lock inventory row to prevent race conditions
     SELECT available_qty
     INTO avail
     FROM Inventory
-    WHERE warehouse_id = (
-        SELECT warehouse_id FROM `Order` WHERE order_id = NEW.order_id
-    )
-    AND product_id = NEW.product_id;
+    WHERE warehouse_id = wh_id
+    AND product_id = NEW.product_id
+    FOR UPDATE;
 
-    IF avail IS NULL OR avail < NEW.quantity THEN
+    -- Check stock
+    IF avail IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Product not stocked in this warehouse';
+    END IF;
+
+    IF avail < NEW.quantity THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Insufficient stock available';
     END IF;
 
+    -- Reserve stock
     UPDATE Inventory
     SET
         available_qty = available_qty - NEW.quantity,
         reserved_qty = reserved_qty + NEW.quantity
-    WHERE warehouse_id = (
-        SELECT warehouse_id FROM `Order` WHERE order_id = NEW.order_id
-    )
+    WHERE warehouse_id = wh_id
     AND product_id = NEW.product_id;
+
+END$$
+
+DELIMITER ;
+-- Trigger:Wallet Debit on Order Confirm
+DELIMITER $$
+
+CREATE TRIGGER trg_after_order_item_insert
+AFTER INSERT ON Order_Item
+FOR EACH ROW
+BEGIN
+
+    UPDATE `Order`
+    SET 
+        total_items = total_items + NEW.quantity,
+        total_amount = total_amount + (NEW.quantity * NEW.unit_price_with_tax)
+    WHERE order_id = NEW.order_id;
+
 END$$
 
 DELIMITER ;
 
---Trigger:Wallet Debit on Order Confirm
+DELIMITER $$
+
+CREATE TRIGGER trg_after_order_item_update
+AFTER UPDATE ON Order_Item
+FOR EACH ROW
+BEGIN
+
+    UPDATE `Order`
+    SET
+        total_items =
+            total_items - OLD.quantity + NEW.quantity,
+
+        total_amount =
+            total_amount
+            - (OLD.quantity * OLD.unit_price_with_tax)
+            + (NEW.quantity * NEW.unit_price_with_tax)
+
+    WHERE order_id = NEW.order_id;
+
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_after_order_item_delete
+AFTER DELETE ON Order_Item
+FOR EACH ROW
+BEGIN
+
+    UPDATE `Order`
+    SET
+        total_items = total_items - OLD.quantity,
+
+        total_amount =
+            total_amount - (OLD.quantity * OLD.unit_price_with_tax)
+
+    WHERE order_id = OLD.order_id;
+
+END$$
+
+DELIMITER ;
+
+
+
+
+
+
+
 DELIMITER $$
 
 CREATE TRIGGER trg_after_order_confirm
@@ -354,7 +528,7 @@ BEGIN
     IF OLD.order_status = 'CREATED'
        AND NEW.order_status = 'CONFIRMED' THEN
 
-        SELECT order_total
+        SELECT order_total_with_tax
         INTO total
         FROM v_order_total
         WHERE order_id = NEW.order_id;
@@ -386,20 +560,41 @@ END$$
 
 DELIMITER ;
 
+DELIMITER $$
+
+CREATE TRIGGER trg_after_inventory_update
+AFTER UPDATE ON Inventory
+FOR EACH ROW
+BEGIN
+    DECLARE threshold INT;
+
+    SELECT min_threshold INTO threshold
+    FROM Reorder_Config
+    WHERE product_id = NEW.product_id
+    AND warehouse_id = NEW.warehouse_id;
+
+    IF threshold IS NOT NULL AND NEW.available_qty < threshold THEN
+        SIGNAL SQLSTATE '01000'
+        SET MESSAGE_TEXT = 'Reorder required for this product';
+    END IF;
+END$$
+
+DELIMITER ;
 
 
---For the UI dashboards
+-- For the UI dashboards
 -- View:Customer Products
 CREATE VIEW v_customer_products AS
 SELECT
     w.warehouse_name,
     p.product_name,
-    ROUND(pp.price_before_tax * 1.20, 2) AS price_after_tax,
+    ROUND(MIN(pp.price_before_tax) * 1.20, 2) AS price_after_tax,
     i.available_qty
 FROM Inventory i
 JOIN Warehouse w ON i.warehouse_id = w.warehouse_id
 JOIN Product p ON i.product_id = p.product_id
-JOIN Producer_Product pp ON p.product_id = pp.product_id;
+JOIN Producer_Product pp ON p.product_id = pp.product_id
+GROUP BY w.warehouse_name, p.product_name, i.available_qty;
 
 
 
@@ -441,3 +636,59 @@ SELECT
     (total_capacity - used_capacity) AS free_capacity,
     ROUND((used_capacity / total_capacity) * 100, 2) AS utilization_percent
 FROM Warehouse;
+
+CREATE VIEW v_warehouse_revenue AS
+SELECT
+    w.warehouse_id,
+    w.warehouse_name,
+    SUM(oi.quantity * oi.unit_price_with_tax) AS total_revenue
+FROM `Order` o
+JOIN Order_Item oi ON o.order_id = oi.order_id
+JOIN Warehouse w ON o.warehouse_id = w.warehouse_id
+GROUP BY w.warehouse_id, w.warehouse_name;
+
+CREATE VIEW v_warehouse_cost AS
+SELECT
+    w.warehouse_id,
+    w.warehouse_name,
+    SUM(b.quantity * b.unit_cost) AS total_cost
+FROM Batch b
+JOIN Warehouse w ON b.warehouse_id = w.warehouse_id
+GROUP BY w.warehouse_id, w.warehouse_name;
+
+CREATE VIEW v_warehouse_profit AS
+SELECT
+    o.warehouse_id,
+    w.warehouse_name,
+    SUM(oi.quantity * oi.unit_price_with_tax) AS revenue,
+    SUM(oi.quantity * bc.avg_cost) AS cost,
+    SUM(oi.quantity * oi.unit_price_with_tax)
+      - SUM(oi.quantity * bc.avg_cost) AS profit
+FROM `Order` o
+JOIN Order_Item oi ON o.order_id = oi.order_id
+JOIN Warehouse w ON o.warehouse_id = w.warehouse_id
+JOIN (
+    SELECT product_id, AVG(unit_cost) AS avg_cost
+    FROM Batch
+    GROUP BY product_id
+) bc ON bc.product_id = oi.product_id
+GROUP BY o.warehouse_id, w.warehouse_name;
+
+CREATE VIEW v_warehouse_financial_dashboard AS
+SELECT
+    w.warehouse_name,
+    w.budget AS remaining_budget,
+    r.total_revenue,
+    c.total_cost,
+    (r.total_revenue - c.total_cost) AS profit
+FROM Warehouse w
+LEFT JOIN v_warehouse_revenue r
+ON w.warehouse_id = r.warehouse_id
+LEFT JOIN v_warehouse_cost c
+ON w.warehouse_id = c.warehouse_id;
+
+CREATE INDEX idx_orderitem_order
+ON Order_Item(order_id);
+
+CREATE INDEX idx_orderitem_product
+ON Order_Item(product_id);
