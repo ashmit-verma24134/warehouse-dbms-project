@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 import mysql.connector
 from mysql.connector import Error
-from flask import request
+import bcrypt
 
 
 
@@ -14,6 +14,15 @@ def get_db_connection():
         user="root",
         password="Anuradha@babu1",
         database="supplychain_db"
+    )
+
+# ---------- AUTH DB CONNECTION ----------
+def get_auth_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="Vansh173@",
+        database="auth_db"
     )
 
 # ---------- HOME ----------
@@ -326,6 +335,76 @@ def demo_wallets():
         conn.close()
 
 # =====================================================
+# AUTH ROUTES
+# =====================================================
+
+@app.route("/signup", methods=["POST"])
+def signup():
+    conn = None
+    cursor = None
+
+    try:
+        data = request.json
+
+        username = data["username"]
+        password = data["password"]
+        role_id = data["role_id"]
+
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+        conn = get_auth_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, role_id) VALUES (%s,%s,%s)",
+            (username, hashed.decode(), role_id)
+        )
+
+        conn.commit()
+
+        return {"message": "User created"}
+
+    except mysql.connector.Error as e:
+        return {"error": str(e)}
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+@app.route("/login", methods=["POST"]) #login
+def login():
+
+    data = request.json
+
+    username = data["username"]
+    password = data["password"]
+
+    conn = get_auth_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "SELECT password_hash, role_id FROM users WHERE username=%s",
+        (username,)
+    )
+
+    user = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if not user:
+        return {"error": "User not found"},404
+
+    if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+        return {"error": "Invalid password"},401
+
+    return {
+        "message": "Login successful",
+        "role_id": user["role_id"]
+    }
+
+# =====================================================
 # ANALYTICS ROUTES (READ-ONLY)
 # =====================================================
 
@@ -386,3 +465,6 @@ def server_error(e):
 # ---------- RUN SERVER ----------
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
