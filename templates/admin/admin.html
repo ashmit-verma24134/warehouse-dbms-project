@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ warehouse.warehouse_name }} — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0f1923;
+    --surface: #162030;
+    --surface2: #1c2a3a;
+    --border: #1e3148;
+    --ink: #e8f0f8;
+    --ink2: #7a9ab8;
+    --accent: #2d9cdb;
+    --accent-light: rgba(45,156,219,0.1);
+    --gold: #f2c94c;
+    --gold-light: rgba(242,201,76,0.08);
+    --green: #27ae60;
+    --green-light: rgba(39,174,96,0.1);
+    --red: #eb5757;
+    --red-light: rgba(235,87,87,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(45,156,219,0.05) 0%, transparent 50%),
+      radial-gradient(circle at 85% 85%, rgba(242,201,76,0.04) 0%, transparent 50%);
+  }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 50;
+  }
+  .header-brand { font-family: 'DM Serif Display', serif; font-size: 1.2rem; }
+  .header-brand span { color: var(--accent); font-style: italic; }
+  .header-meta { display: flex; align-items: center; gap: 16px; font-size: 0.82rem; color: var(--ink2); }
+  .budget-pill {
+    background: var(--gold-light); border: 1px solid rgba(242,201,76,0.2);
+    color: var(--gold); border-radius: 20px; padding: 4px 14px;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+  }
+
+  .page { max-width: 1280px; margin: 0 auto; padding: 36px 48px 80px; }
+
+  .hero {
+    margin-bottom: 36px; padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-end;
+    flex-wrap: wrap; gap: 20px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem; letter-spacing: -0.02em; line-height: 1.1;
+    margin-bottom: 6px;
+  }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-sub { color: var(--ink2); font-family: 'DM Mono', monospace; font-size: 0.82rem; }
+
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .stat-icon { font-size: 1.8rem; }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink2); margin-bottom: 4px; }
+  .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.6rem; }
+  .stat-value.blue { color: var(--accent); }
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.green { color: var(--green); }
+
+  /* FLASH */
+  .flash-list { list-style: none; margin-bottom: 24px; }
+  .flash-list li {
+    padding: 12px 16px; border-radius: 8px;
+    font-size: 0.85rem; margin-bottom: 8px; border-left: 3px solid;
+  }
+  .flash-success { background: var(--green-light); color: #6fcf97; border-color: var(--green); }
+  .flash-danger  { background: var(--red-light); color: #eb5757; border-color: var(--red); }
+  .flash-warning { background: var(--gold-light); color: var(--gold); border-color: var(--gold); }
+
+  .grid-two {
+    display: grid; grid-template-columns: 1fr 1.4fr;
+    gap: 24px; margin-bottom: 32px; align-items: start;
+  }
+  .grid-full { margin-bottom: 32px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .card-header {
+    padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.15rem; }
+  .badge {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    padding: 3px 10px; border-radius: 20px; font-weight: 500;
+  }
+  .badge-blue   { background: var(--accent-light); color: var(--accent); }
+  .badge-gold   { background: var(--gold-light); color: var(--gold); }
+  .badge-green  { background: var(--green-light); color: #6fcf97; }
+  .badge-gray   { background: rgba(122,154,184,0.1); color: var(--ink2); }
+  .card-body { padding: 20px 22px; }
+
+  /* FORM */
+  .form-group { margin-bottom: 14px; }
+  label {
+    display: block; font-size: 0.72rem; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink2); margin-bottom: 6px;
+  }
+  select, input[type="number"] {
+    width: 100%; padding: 10px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem; color: var(--ink);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+  }
+  select:focus, input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,156,219,0.12);
+  }
+  select option { background: var(--surface2); }
+
+  .cost-preview {
+    background: var(--gold-light); border: 1px solid rgba(242,201,76,0.2);
+    border-radius: 8px; padding: 10px 14px;
+    font-family: 'DM Mono', monospace; font-size: 0.82rem;
+    color: var(--gold); margin-bottom: 14px; display: none;
+  }
+  .cost-preview.show { display: block; }
+
+  .btn-send {
+    width: 100%; background: var(--accent); color: white; border: none;
+    border-radius: 10px; padding: 12px;
+    font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em;
+  }
+  .btn-send:hover { background: #2387c4; box-shadow: 0 4px 12px rgba(45,156,219,0.3); }
+
+  /* CATALOGUE */
+  .producer-group { margin-bottom: 20px; }
+  .producer-name {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--accent); font-weight: 600; margin-bottom: 8px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .product-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid rgba(30,49,72,0.6);
+  }
+  .product-row:last-child { border-bottom: none; }
+  .prod-name { font-size: 0.85rem; font-weight: 500; }
+  .prod-price { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--gold); }
+  .prod-limit { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--ink2); }
+
+  /* REQUESTS TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    text-align: left; padding: 10px 16px;
+    background: var(--surface2); color: var(--ink2);
+    font-size: 0.65rem; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+
+  .pill {
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 0.7rem; font-weight: 500;
+    font-family: 'DM Mono', monospace;
+  }
+  .pill-pending   { background: var(--gold-light); color: var(--gold); }
+  .pill-fulfilled { background: var(--green-light); color: #6fcf97; }
+  .pill-cancelled { background: var(--red-light); color: var(--red); }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--ink2); font-size: 0.85rem; }
+
+  @media(max-width:900px){
+    .grid-two { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr; }
+    .page { padding: 24px 20px 60px; }
+    .header { padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">WMS <span>Admin</span> Portal</div>
+  <div class="header-meta">
+    <span style="font-family:'DM Mono',monospace">Warehouse #{{ warehouse.warehouse_id }}</span>
+    <span class="budget-pill">Budget: ₹{{ "%.0f"|format(warehouse.budget) }}</span>
+  </div>
+</header>
+
+<div class="page">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-list">
+        {% for category, message in messages %}
+          <li class="flash-{{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <div class="hero">
+    <div>
+      <h1>{{ warehouse.warehouse_name }}<br/><em>Admin Dashboard</em></h1>
+      <div class="hero-sub">Send restock requests · Track incoming stock</div>
+    </div>
+  </div>
+
+
+  <!-- PRICE CHANGE ALERTS -->
+  {% if price_alerts %}
+  <div style="margin-bottom:24px;">
+    {% for r in price_alerts %}
+    <div style="background:rgba(235,87,87,0.08);border:1px solid rgba(235,87,87,0.3);border-left:4px solid #eb5757;border-radius:10px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-weight:600;font-size:0.9rem;color:#eb5757;margin-bottom:4px;">⚠ Price Changed — Action Required</div>
+        <div style="font-size:0.82rem;color:var(--ink2);">
+          <strong style="color:var(--ink)">{{ r.producer_name }}</strong> updated
+          <strong style="color:var(--ink)">{{ r.product_name }}</strong> price:
+          <span style="font-family:'DM Mono',monospace;text-decoration:line-through;color:#eb5757;">₹{{ "%.2f"|format(r.quoted_price) }}</span>
+          &nbsp;→&nbsp;
+          <span style="font-family:'DM Mono',monospace;color:var(--gold);">₹{{ "%.2f"|format(r.current_price) }}</span>
+          &nbsp;·&nbsp; Request #{{ r.request_id }} for {{ r.requested_qty }} units
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/accept-price-change/{{ r.request_id }}">
+          <button type="submit" style="background:var(--green);color:white;border:none;border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;">
+            ✓ Accept New Price
+          </button>
+        </form>
+        <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/cancel-request/{{ r.request_id }}">
+          <button type="submit" style="background:var(--red-light);color:#eb5757;border:1px solid rgba(235,87,87,0.4);border-radius:8px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;">
+            ✗ Cancel Request
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">🏭</div>
+      <div>
+        <div class="stat-label">Capacity Used</div>
+        <div class="stat-value blue">{{ warehouse.used_capacity }} / {{ warehouse.total_capacity }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💰</div>
+      <div>
+        <div class="stat-label">Remaining Budget</div>
+        <div class="stat-value gold">₹{{ "%.0f"|format(warehouse.budget) }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📋</div>
+      <div>
+        <div class="stat-label">Requests Sent</div>
+        <div class="stat-value green">{{ requests|length }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEND REQUEST + CATALOGUE -->
+  <div class="grid-two">
+
+    <!-- SEND RESTOCK REQUEST FORM -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Send Restock Request</h2>
+        <span class="badge badge-blue">To Producer</span>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/send-request">
+
+          <div class="form-group">
+            <label>Producer</label>
+            <select name="producer_id" id="producerSelect" onchange="filterProducts()" required>
+              <option value="">— Select producer —</option>
+              {% set seen = [] %}
+              {% for item in catalogue %}
+                {% if item.producer_id not in seen %}
+                  {% if seen.append(item.producer_id) %}{% endif %}
+                  <option value="{{ item.producer_id }}">{{ item.producer_name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Product</label>
+            <select name="product_id" id="productSelect" onchange="showCost()" required>
+              <option value="">— Select producer first —</option>
+              {% for item in catalogue %}
+                <option
+                  value="{{ item.product_id }}"
+                  data-producer="{{ item.producer_id }}"
+                  data-price="{{ item.price_before_tax }}"
+                  data-limit="{{ item.max_batch_limit }}"
+                  style="display:none"
+                >
+                  {{ item.product_name }} — ₹{{ "%.2f"|format(item.price_before_tax) }}/unit
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" name="requested_qty" id="qtyInput" min="1" placeholder="e.g. 100" required onchange="showCost()"/>
+          </div>
+
+          <div class="cost-preview" id="costPreview"></div>
+
+          <button type="submit" class="btn-send">Send Request →</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- PRODUCT CATALOGUE BY PRODUCER -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Available Products</h2>
+        <span class="badge badge-gray">All approved producers</span>
+      </div>
+      <div class="card-body" style="max-height:420px;overflow-y:auto;">
+        {% set ns = namespace(current_producer=None) %}
+        {% for item in catalogue %}
+          {% if item.producer_name != ns.current_producer %}
+            {% if ns.current_producer is not none %}</div>{% endif %}
+            {% set ns.current_producer = item.producer_name %}
+            <div class="producer-group">
+            <div class="producer-name">{{ item.producer_name }}</div>
+          {% endif %}
+          <div class="product-row">
+            <span class="prod-name">{{ item.product_name }}</span>
+            <span class="prod-price">₹{{ "%.2f"|format(item.price_before_tax) }}</span>
+            <span class="prod-limit">max {{ item.max_batch_limit }}</span>
+          </div>
+        {% endfor %}
+        {% if catalogue %}</div>{% endif %}
+        {% if not catalogue %}
+          <div class="empty-state">No approved producers found.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RECENT REQUESTS -->
+  <div class="grid-full">
+    <div class="card">
+      <div class="card-header">
+        <h2>Recent Restock Requests</h2>
+        <span class="badge badge-gray">Last 20</span>
+      </div>
+      <div class="table-wrap">
+        {% if requests %}
+        <table>
+          <thead>
+            <tr>
+              <th>Request ID</th>
+              <th>Producer</th>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Status</th>
+              <th>Sent At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in requests %}
+            <tr>
+              <td class="mono">#{{ r.request_id }}</td>
+              <td style="font-weight:500">{{ r.producer_name }}</td>
+              <td>{{ r.product_name }}</td>
+              <td class="mono">{{ r.requested_qty }}</td>
+              <td class="mono" style="color:var(--gold)">
+                {% if r.quoted_price %}₹{{ "%.2f"|format(r.quoted_price) }}{% else %}—{% endif %}
+              </td>
+              <td class="mono" style="{% if r.quoted_price and r.status == 'Pending' and r.quoted_price != r.current_price %}color:#eb5757{% else %}color:var(--ink2){% endif %}">
+                ₹{{ "%.2f"|format(r.current_price) }}
+                {% if r.quoted_price and r.status == 'Pending' and r.quoted_price != r.current_price %} ⚠{% endif %}
+              </td>
+              <td>
+                <span class="pill pill-{{ r.status|lower }}">{{ r.status }}</span>
+              </td>
+              <td class="mono">{{ r.created_at }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state">No requests sent yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Build a lookup: producer_id -> [{product_id, product_name, price, limit}]
+  const catalogue = {};
+  {% for item in catalogue %}
+  if (!catalogue[{{ item.producer_id }}]) catalogue[{{ item.producer_id }}] = [];
+  catalogue[{{ item.producer_id }}].push({
+    id: {{ item.product_id }},
+    name: "{{ item.product_name }}",
+    price: {{ item.price_before_tax }},
+    limit: {{ item.max_batch_limit }}
+  });
+  {% endfor %}
+
+  function filterProducts() {
+    const producerId = parseInt(document.getElementById('producerSelect').value);
+    const productSel = document.getElementById('productSelect');
+    productSel.innerHTML = '<option value="">— Select product —</option>';
+    document.getElementById('costPreview').classList.remove('show');
+
+    if (!producerId || !catalogue[producerId]) return;
+
+    catalogue[producerId].forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.dataset.price = p.price;
+      opt.dataset.limit = p.limit;
+      opt.textContent = p.name + ' — Rs.' + p.price.toFixed(2) + '/unit';
+      productSel.appendChild(opt);
+    });
+  }
+
+  function showCost() {
+    const productSel = document.getElementById('productSelect');
+    const opt = productSel.options[productSel.selectedIndex];
+    const qty = parseInt(document.getElementById('qtyInput').value) || 0;
+    const preview = document.getElementById('costPreview');
+
+    if (!opt || !opt.value) { preview.classList.remove('show'); return; }
+
+    const price = parseFloat(opt.dataset.price);
+    const limit = parseInt(opt.dataset.limit);
+
+    if (qty > 0) {
+      const total = (qty * price).toFixed(2);
+      preview.innerHTML = `${qty} units x Rs.${price.toFixed(2)} = <strong>Rs.${total}</strong> (pre-tax)
+        &nbsp;|&nbsp; Max batch: ${limit} units
+        ${qty > limit ? '<br><span style="color:#eb5757">Warning: exceeds max batch limit!</span>' : ''}`;
+      preview.classList.add('show');
+    }
+  }
+</script>
+</body>
+</html>

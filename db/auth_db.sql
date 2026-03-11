@@ -15,10 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(60) NOT NULL,
     role_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
-
 -- DEFAULT ROLES
 INSERT INTO roles VALUES
 (1,'PRODUCER'),

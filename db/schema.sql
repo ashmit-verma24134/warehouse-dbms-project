@@ -38,6 +38,8 @@ CREATE TABLE Producer (
         NOT NULL DEFAULT 'Pending'
 ) ENGINE=InnoDB;
 
+-- Run this once in your MySQL Workbench
+ALTER TABLE Producer ADD COLUMN earnings DECIMAL(12,2) DEFAULT 0.00;
 
 -- ==============================
 -- PRODUCT TABLE
@@ -106,6 +108,8 @@ CREATE TABLE Warehouse (
     CONSTRAINT chk_budget_nonneg CHECK (budget >= 0)
 ) ENGINE=InnoDB;
 
+
+
 -- Admin Table (1:1 with Warehouse)
 CREATE TABLE Admin (
     admin_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -141,7 +145,11 @@ CREATE TABLE Batch (
     CONSTRAINT fk_batch_warehouse
         FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id)
 )ENGINE=InnoDB;
-
+-- Run this to allow tracking of the request in the batch
+ALTER TABLE Batch 
+ADD COLUMN request_id INT NULL,
+ADD CONSTRAINT fk_batch_request 
+    FOREIGN KEY (request_id) REFERENCES Restock_Request(request_id);
 
 -- Customer Table
 CREATE TABLE Customer (
@@ -153,6 +161,8 @@ CREATE TABLE Customer (
 
     email VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
+
+
 
 
 -- Wallet Table (1-to-1 with Customer)
@@ -319,6 +329,28 @@ CREATE TABLE Reorder_Config (
         REFERENCES Warehouse(warehouse_id)
 ) ENGINE=InnoDB;
 
+
+
+USE supplychain_db;
+
+-- 1. Ensure the table is dropped safely
+DROP TABLE IF EXISTS Restock_Request;
+
+-- 2. Create the table explicitly
+CREATE TABLE Restock_Request (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    warehouse_id INT NOT NULL,
+    producer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    requested_qty INT NOT NULL,
+    status ENUM('Pending', 'Fulfilled', 'Cancelled') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id),
+    FOREIGN KEY (producer_id) REFERENCES Producer(producer_id),
+    FOREIGN KEY (product_id) REFERENCES Product(product_id),
+    CHECK (requested_qty > 0)
+) ENGINE=InnoDB;
 
 -- Trigger:Update Inventory & Enforce Capacity
 -- Whenever a new batch arrives, this trigger checks warehouse capacity and updates inventory automatically.
@@ -560,6 +592,114 @@ END$$
 
 DELIMITER ;
 
+
+
+-- ============================================================
+-- STEP 1: Recreate the trigger that was missing
+-- ============================================================
+
+DELIMITER $$
+
+CREATE TRIGGER trg_before_batch_insert
+BEFORE INSERT ON Batch
+FOR EACH ROW
+BEGIN
+    DECLARE current_used INT;
+    DECLARE total_cap INT;
+    DECLARE purchase_cost DECIMAL(12,2);
+    DECLARE warehouse_budget DECIMAL(12,2);
+    DECLARE prod_status VARCHAR(20);
+
+    -- Check producer is approved
+    SELECT approval_status
+    INTO prod_status
+    FROM Producer
+    WHERE producer_id = NEW.producer_id;
+
+    IF prod_status <> 'Approved' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Producer not approved';
+    END IF;
+
+    -- Get warehouse capacity
+    SELECT used_capacity, total_capacity
+    INTO current_used, total_cap
+    FROM Warehouse
+    WHERE warehouse_id = NEW.warehouse_id;
+
+    -- Check capacity
+    IF current_used + NEW.quantity > total_cap THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Warehouse capacity exceeded';
+    END IF;
+
+    -- Calculate purchase cost
+    SET purchase_cost = NEW.quantity * NEW.unit_cost;
+
+    -- Get warehouse budget
+    SELECT budget
+    INTO warehouse_budget
+    FROM Warehouse
+    WHERE warehouse_id = NEW.warehouse_id;
+
+    -- Check budget
+    IF warehouse_budget < purchase_cost THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Warehouse budget exceeded';
+    END IF;
+
+    -- Update inventory
+    INSERT INTO Inventory (warehouse_id, product_id, available_qty, reserved_qty)
+    VALUES (NEW.warehouse_id, NEW.product_id, NEW.quantity, 0)
+    ON DUPLICATE KEY UPDATE
+        available_qty = available_qty + NEW.quantity;
+
+    -- Deduct capacity and budget
+    UPDATE Warehouse
+    SET
+        used_capacity = used_capacity + NEW.quantity,
+        budget        = budget - purchase_cost
+    WHERE warehouse_id = NEW.warehouse_id;
+
+END$$
+
+DELIMITER ;
+
+-- ============================================================
+-- STEP 2: Add quoted_price column to Restock_Request
+--         (needed for price-change notification feature)
+-- ============================================================
+
+ALTER TABLE Restock_Request
+ADD COLUMN IF NOT EXISTS quoted_price DECIMAL(10,2) NULL
+COMMENT 'Price per unit at time warehouse sent the request';
+
+-- ============================================================
+-- STEP 3: Manually fix the budget for batches that already
+--         came in BEFORE the trigger existed.
+--         This calculates what SHOULD have been deducted.
+-- ============================================================
+
+UPDATE Warehouse w
+SET w.budget = w.budget - (
+    SELECT COALESCE(SUM(b.quantity * b.unit_cost), 0)
+    FROM Batch b
+    WHERE b.warehouse_id = w.warehouse_id
+)
+WHERE w.warehouse_id = 1;
+
+-- ============================================================
+-- STEP 4: Verify everything looks right
+-- ============================================================
+
+SELECT warehouse_id, warehouse_name, budget, used_capacity, total_capacity
+FROM Warehouse;
+
+SHOW TRIGGERS WHERE `Table` = 'Batch';
+
+
+
+
 DELIMITER $$
 
 CREATE TRIGGER trg_after_inventory_update
@@ -692,3 +832,12 @@ ON Order_Item(order_id);
 
 CREATE INDEX idx_orderitem_product
 ON Order_Item(product_id);
+
+
+USE auth_db;
+ALTER TABLE users ADD COLUMN linked_id INT DEFAULT NULL;
+UPDATE users SET linked_id = 1 WHERE username = 'producer1';
+UPDATE users SET linked_id = 1 WHERE username = 'testuser222';
+UPDATE users SET linked_id = 1 WHERE username = 'admin1';
+UPDATE users SET linked_id = 1 WHERE username = 'vansh';
+UPDATE users SET linked_id = 1 WHERE username = 'asas';
