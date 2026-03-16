@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KiranaMart — {{ customer.first_name }}'s Store</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --saffron: #FF6B00;
+  --saffron-light: #FF8C38;
+  --saffron-pale: #FFF3E0;
+  --green: #2E7D32;
+  --green-light: #43A047;
+  --cream: #FFFBF5;
+  --white: #FFFFFF;
+  --text: #1C1C1C;
+  --muted: #777;
+  --border: #F0E6DA;
+  --radius: 16px;
+  --shadow: 0 2px 16px rgba(255,107,0,0.10);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+
+/* NAV */
+.nav{
+  background:linear-gradient(135deg,#FF6B00,#E65100);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;height:62px;position:sticky;top:0;z-index:100;
+  box-shadow:0 4px 20px rgba(255,107,0,0.3);
+}
+.logo{font-family:'Baloo 2',cursive;font-size:1.55rem;font-weight:800;color:#fff;letter-spacing:-0.5px;}
+.logo em{color:#FFE0B2;font-style:normal;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.wallet-chip{
+  background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.35);
+  color:#fff;border-radius:40px;padding:6px 16px;
+  font-weight:800;font-size:0.9rem;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:background .2s;
+}
+.wallet-chip:hover{background:rgba(255,255,255,0.3);}
+.cart-chip{
+  background:#fff;color:var(--saffron);border:none;border-radius:40px;
+  padding:8px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:0.9rem;
+  cursor:pointer;display:flex;align-items:center;gap:7px;position:relative;
+  transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.15);
+}
+.cart-chip:hover{background:#FFF3E0;transform:scale(1.04);}
+.badge{
+  background:var(--green);color:#fff;border-radius:50%;
+  width:19px;height:19px;font-size:0.68rem;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  position:absolute;top:-7px;right:-7px;
+}
+
+/* HERO */
+.hero{
+  background:linear-gradient(160deg,#FFF8F0 0%,#FFFBF5 100%);
+  padding:24px 28px 18px;border-bottom:2px solid var(--border);
+}
+.hero-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.greeting{font-family:'Baloo 2',cursive;font-size:1.4rem;font-weight:700;color:var(--saffron);}
+.greeting span{color:var(--text);}
+.search-wrap{position:relative;max-width:420px;width:100%;}
+.search-wrap input{
+  width:100%;padding:11px 44px 11px 18px;border-radius:40px;
+  border:2px solid var(--border);font-family:'Nunito',sans-serif;font-size:0.95rem;
+  background:#fff;outline:none;transition:border-color .2s;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.search-wrap input:focus{border-color:var(--saffron);}
+.search-icon{position:absolute;right:15px;top:50%;transform:translateY(-50%);font-size:1.1rem;}
+
+/* GRID */
+.main{padding:20px 28px 100px;max-width:1200px;margin:0 auto;}
+.section-lbl{
+  font-size:0.75rem;font-weight:800;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--muted);margin-bottom:14px;
+}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:13px;}
+
+.card{
+  background:#fff;border-radius:var(--radius);padding:16px 12px 12px;
+  box-shadow:var(--shadow);text-align:center;cursor:pointer;
+  border:2px solid transparent;transition:all .22s;
+  animation:fadeUp .38s ease both;
+}
+.card:hover{border-color:var(--saffron);transform:translateY(-3px);box-shadow:0 8px 24px rgba(255,107,0,0.15);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card-emoji{font-size:2.5rem;display:block;margin-bottom:8px;line-height:1;}
+.card-name{font-weight:700;font-size:0.83rem;line-height:1.3;margin-bottom:4px;color:var(--text);}
+.card-price{color:var(--saffron);font-weight:800;font-size:1rem;margin-bottom:10px;}
+.card-price small{font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-top:1px;}
+.qty-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;}
+.qbtn{
+  width:28px;height:28px;border-radius:50%;border:2px solid var(--saffron);
+  background:#fff;color:var(--saffron);font-size:1rem;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.qbtn:hover{background:var(--saffron);color:#fff;}
+.qval{font-weight:800;min-width:22px;text-align:center;font-size:0.95rem;}
+.add-btn{
+  width:100%;padding:8px 0;border-radius:40px;border:none;
+  background:var(--saffron);color:#fff;font-family:'Nunito',sans-serif;
+  font-weight:700;font-size:0.82rem;cursor:pointer;transition:all .18s;
+}
+.add-btn:hover{background:#E65100;}
+.hidden{display:none!important;}
+.no-results{text-align:center;padding:50px 20px;color:var(--muted);display:none;}
+.no-results.show{display:block;}
+.no-results span{font-size:2.5rem;display:block;margin-bottom:10px;}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.42);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s;}
+.overlay.show{opacity:1;pointer-events:all;}
+
+/* CART DRAWER */
+.drawer{
+  position:fixed;right:0;top:0;bottom:0;width:360px;max-width:100vw;
+  background:#fff;z-index:201;transform:translateX(105%);
+  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;
+  box-shadow:-8px 0 40px rgba(0,0,0,0.14);
+}
+.drawer.open{transform:translateX(0);}
+.drawer-head{
+  padding:18px 20px;border-bottom:2px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,var(--saffron),#E65100);color:#fff;
+}
+.drawer-head h2{font-family:'Baloo 2',cursive;font-size:1.25rem;font-weight:800;}
+.close-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;}
+.cart-body{flex:1;overflow-y:auto;padding:14px;}
+.empty-cart{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-cart span{font-size:3rem;display:block;margin-bottom:10px;}
+.ci{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);}
+.ci-emoji{font-size:1.75rem;}
+.ci-info{flex:1;}
+.ci-name{font-weight:700;font-size:0.88rem;}
+.ci-sub{color:var(--saffron);font-weight:600;font-size:0.82rem;margin-top:2px;}
+.ci-controls{display:flex;align-items:center;gap:5px;}
+.cqbtn{
+  width:24px;height:24px;border-radius:50%;border:1.5px solid var(--saffron);
+  background:#fff;color:var(--saffron);font-size:0.85rem;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.cqbtn:hover{background:var(--saffron);color:#fff;}
+.ci-qty{font-weight:800;font-size:0.9rem;min-width:18px;text-align:center;}
+.drawer-foot{padding:14px 16px;border-top:2px solid var(--border);background:#FAFAFA;}
+.sum-row{display:flex;justify-content:space-between;font-size:0.88rem;margin-bottom:5px;color:var(--muted);}
+.sum-row.total{font-weight:800;font-size:1.05rem;color:var(--text);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.sum-row.total span:last-child{color:var(--saffron);}
+.wallet-row{
+  background:#E8F5E9;border-radius:10px;padding:9px 13px;
+  margin:10px 0;display:flex;justify-content:space-between;align-items:center;
+}
+.wallet-row span{font-size:0.83rem;font-weight:700;color:var(--green);}
+.wallet-row .wbal{font-weight:800;font-size:0.98rem;color:var(--green);}
+.wallet-row.low{background:#FFEBEE;}
+.wallet-row.low span,.wallet-row.low .wbal{color:#C62828;}
+.place-btn{
+  width:100%;padding:13px;border-radius:40px;border:none;
+  background:linear-gradient(135deg,var(--green-light),var(--green));
+  color:#fff;font-family:'Nunito',sans-serif;font-weight:800;font-size:1rem;
+  cursor:pointer;transition:all .2s;margin-top:6px;
+}
+.place-btn:hover:not(:disabled){transform:scale(1.02);box-shadow:0 4px 16px rgba(46,125,50,0.3);}
+.place-btn:disabled{background:#ccc;cursor:not-allowed;}
+
+/* MODAL */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,0.48);z-index:300;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.modal-bg.show{opacity:1;pointer-events:all;}
+.modal{
+  background:#fff;border-radius:24px;padding:28px;width:340px;max-width:92vw;
+  transform:scale(.9);transition:transform .3s;
+  box-shadow:0 20px 60px rgba(0,0,0,0.18);
+}
+.modal-bg.show .modal{transform:scale(1);}
+.modal h3{font-family:'Baloo 2',cursive;font-size:1.3rem;font-weight:800;color:var(--saffron);margin-bottom:4px;}
+.modal p{font-size:0.88rem;color:var(--muted);margin-bottom:16px;}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.pre-btn{
+  padding:6px 14px;border-radius:40px;border:2px solid var(--saffron);
+  background:#fff;color:var(--saffron);font-weight:700;font-size:0.82rem;cursor:pointer;transition:all .15s;
+}
+.pre-btn:hover,.pre-btn.active{background:var(--saffron);color:#fff;}
+.modal input{
+  width:100%;padding:12px 16px;border-radius:12px;border:2px solid var(--border);
+  font-family:'Nunito',sans-serif;font-size:1rem;outline:none;margin-bottom:12px;transition:border-color .2s;
+}
+.modal input:focus{border-color:var(--saffron);}
+.modal-acts{display:flex;gap:10px;}
+.m-cancel{flex:1;padding:12px;border-radius:40px;border:2px solid var(--border);background:#fff;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;}
+.m-confirm{
+  flex:2;padding:12px;border-radius:40px;border:none;
+  background:linear-gradient(135deg,var(--saffron-light),var(--saffron));
+  color:#fff;font-family:'Nunito',sans-serif;font-weight:800;cursor:pointer;transition:all .2s;
+}
+.m-confirm:hover{transform:scale(1.02);}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:#1C1C1C;color:#fff;padding:11px 24px;border-radius:40px;
+  font-weight:700;font-size:0.88rem;z-index:500;transition:transform .35s;
+  white-space:nowrap;max-width:90vw;text-align:center;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.ok{background:var(--green);}
+.toast.err{background:#C62828;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="logo">Kirana<em>Mart</em> 🛒</div>
+  <div class="nav-right">
+    <button class="wallet-chip" onclick="openWallet()">
+      💰 ₹<span id="wd">{{ "%.2f"|format(wallet.balance) }}</span>
+    </button>
+    <button class="cart-chip" onclick="openCart()">
+      🛍️ Cart
+      <span class="badge" id="badge">0</span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-top">
+    <div class="greeting">Hey, <span>{{ customer.first_name }}! 👋</span></div>
+    <div class="search-wrap">
+      <input type="text" id="srch" placeholder="Search products…" oninput="filter()"/>
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTS -->
+<main class="main">
+  <div class="section-lbl">{{ products|length }} products available</div>
+  <div class="grid" id="grid">
+    {% set EMOJI = {
+      'Amul Milk':'🥛','Amul Butter':'🧈','Amul Chocolate':'🍫',
+      'Britannia Good Day Biscuits':'🍪','Britannia Cake Roll':'🎂','Britannia Marie Gold':'🍘',
+      'Haldirams Bhujia':'🥜','Haldirams Soan Papdi':'🍬','Haldirams Kaju Katli':'🍮',
+      'Parle G Biscuits':'🍪','Parle Hide & Seek':'🍫','Parle Melody Toffee':'🍭',
+      'Sunfeast Dark Fantasy':'🍫','Aashirvaad Atta':'🌾','Bingo Mad Angles':'🥨'
+    } %}
+    {% for p in products %}
+    <div class="card"
+         data-name="{{ p.product_name|lower }}"
+         style="animation-delay:{{ loop.index0 * 0.04 }}s">
+      <span class="card-emoji">{{ EMOJI.get(p.product_name, '🛒') }}</span>
+      <div class="card-name">{{ p.product_name }}</div>
+      <div class="card-price">
+        ₹{{ "%.0f"|format(p.price_before_tax * 1.2) }}
+        <small>incl. 20% GST</small>
+      </div>
+      <div class="qty-row">
+        <button class="qbtn" onclick="dq({{ p.product_id }},-1)">−</button>
+        <span class="qval" id="q{{ p.product_id }}">1</span>
+        <button class="qbtn" onclick="dq({{ p.product_id }},1)">+</button>
+      </div>
+      <button class="add-btn"
+        onclick="add({{ p.product_id }},'{{ p.product_name }}',{{ p.price_before_tax }})">
+        Add to Cart
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="no-results" id="none"><span>😕</span>No products match your search</div>
+</main>
+
+<!-- OVERLAY -->
+<div class="overlay" id="ov" onclick="closeCart()"></div>
+
+<!-- CART DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h2>🛍️ Your Cart</h2>
+    <button class="close-btn" onclick="closeCart()">✕</button>
+  </div>
+  <div class="cart-body" id="cbody">
+    <div class="empty-cart"><span>🛒</span>Your cart is empty</div>
+  </div>
+  <div class="drawer-foot">
+    <div class="sum-row"><span>Subtotal (pre-GST)</span><span id="sub">₹0.00</span></div>
+    <div class="sum-row"><span>GST (20%)</span><span id="gst">₹0.00</span></div>
+    <div class="sum-row total"><span>Total</span><span id="tot">₹0.00</span></div>
+    <div class="wallet-row" id="wrow">
+      <span>Wallet Balance</span>
+      <span class="wbal" id="wbal">₹{{ "%.2f"|format(wallet.balance) }}</span>
+    </div>
+    <button class="place-btn" id="pbtn" onclick="checkout()">✅ Place Order</button>
+  </div>
+</div>
+
+<!-- WALLET MODAL -->
+<div class="modal-bg" id="wmodal">
+  <div class="modal">
+    <h3>💰 Add Money</h3>
+    <p>Balance: <strong>₹<span id="mbal">{{ "%.2f"|format(wallet.balance) }}</span></strong></p>
+    <div class="presets">
+      <button class="pre-btn" onclick="preset(500,this)">₹500</button>
+      <button class="pre-btn" onclick="preset(1000,this)">₹1,000</button>
+      <button class="pre-btn" onclick="preset(2000,this)">₹2,000</button>
+      <button class="pre-btn" onclick="preset(5000,this)">₹5,000</button>
+    </div>
+    <input type="number" id="amt" placeholder="Or enter custom amount" min="1"/>
+    <div class="modal-acts">
+      <button class="m-cancel" onclick="closeWallet()">Cancel</button>
+      <button class="m-confirm" onclick="addFunds()">Add Money</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const CID = {{ customer.customer_id }};
+const WID = {{ default_warehouse_id }};
+let cart = {};
+let balance = {{ wallet.balance }};
+
+const EMOJI = {
+  'Amul Milk':'🥛','Amul Butter':'🧈','Amul Chocolate':'🍫',
+  'Britannia Good Day Biscuits':'🍪','Britannia Cake Roll':'🎂','Britannia Marie Gold':'🍘',
+  'Haldirams Bhujia':'🥜','Haldirams Soan Papdi':'🍬','Haldirams Kaju Katli':'🍮',
+  'Parle G Biscuits':'🍪','Parle Hide & Seek':'🍫','Parle Melody Toffee':'🍭',
+  'Sunfeast Dark Fantasy':'🍫','Aashirvaad Atta':'🌾','Bingo Mad Angles':'🥨'
+};
+
+/* qty controls on card */
+function dq(id, d) {
+  const el = document.getElementById('q' + id);
+  el.textContent = Math.max(1, Math.min(99, parseInt(el.textContent) + d));
+}
+
+/* add to cart */
+function add(id, name, price) {
+  const qty = parseInt(document.getElementById('q' + id).textContent);
+  if (cart[id]) cart[id].qty += qty;
+  else cart[id] = { id, name, price, qty };
+  renderCart();
+  toast('✅ ' + name + ' added!', 'ok');
+}
+
+/* render cart drawer */
+function renderCart() {
+  const keys = Object.keys(cart);
+  document.getElementById('badge').textContent = keys.reduce((s,k) => s + cart[k].qty, 0);
+
+  if (!keys.length) {
+    document.getElementById('cbody').innerHTML = '<div class="empty-cart"><span>🛒</span>Your cart is empty</div>';
+    document.getElementById('sub').textContent = '₹0.00';
+    document.getElementById('gst').textContent = '₹0.00';
+    document.getElementById('tot').textContent = '₹0.00';
+    document.getElementById('pbtn').disabled = true;
+    updateWalletRow(0);
+    return;
+  }
+
+  let sub = 0, html = '';
+  keys.forEach(k => {
+    const i = cart[k];
+    const line = i.price * 1.2 * i.qty;
+    sub += i.price * i.qty;
+    html += `<div class="ci">
+      <span class="ci-emoji">${EMOJI[i.name]||'🛒'}</span>
+      <div class="ci-info">
+        <div class="ci-name">${i.name}</div>
+        <div class="ci-sub">₹${(i.price*1.2).toFixed(0)} × ${i.qty} = ₹${line.toFixed(0)}</div>
+      </div>
+      <div class="ci-controls">
+        <button class="cqbtn" onclick="cq(${i.id},-1)">−</button>
+        <span class="ci-qty">${i.qty}</span>
+        <button class="cqbtn" onclick="cq(${i.id},1)">+</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('cbody').innerHTML = html;
+
+  const gst = sub * 0.2, total = sub + gst;
+  document.getElementById('sub').textContent  = '₹' + sub.toFixed(2);
+  document.getElementById('gst').textContent  = '₹' + gst.toFixed(2);
+  document.getElementById('tot').textContent  = '₹' + total.toFixed(2);
+  document.getElementById('pbtn').disabled = balance < total;
+  updateWalletRow(total);
+}
+
+function updateWalletRow(total) {
+  const low = balance < total && total > 0;
+  document.getElementById('wrow').className = 'wallet-row' + (low ? ' low' : '');
+  document.getElementById('wbal').textContent = '₹' + balance.toFixed(2);
+}
+
+function cq(id, d) {
+  if (!cart[id]) return;
+  cart[id].qty += d;
+  if (cart[id].qty <= 0) delete cart[id];
+  renderCart();
+}
+
+function openCart()  { document.getElementById('drawer').classList.add('open');  document.getElementById('ov').classList.add('show'); }
+function closeCart() { document.getElementById('drawer').classList.remove('open'); document.getElementById('ov').classList.remove('show'); }
+
+function filter() {
+  const q = document.getElementById('srch').value.toLowerCase();
+  let n = 0;
+  document.querySelectorAll('.card').forEach(c => {
+    const v = c.dataset.name.includes(q);
+    c.classList.toggle('hidden', !v);
+    if (v) n++;
+  });
+  document.getElementById('none').className = 'no-results' + (n===0 ? ' show' : '');
+}
+
+/* checkout */
+async function checkout() {
+  const items = Object.values(cart).map(i => ({
+    product_id: i.id, qty: i.qty, unit_price: i.price
+  }));
+  if (!items.length) return;
+  const btn = document.getElementById('pbtn');
+  btn.disabled = true; btn.textContent = 'Processing…';
+  try {
+    const r = await fetch(`/customer/${CID}/checkout`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ items, warehouse_id: WID })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      cart = {}; renderCart(); closeCart();
+      const wr = await fetch(`/customer/${CID}/balance`);
+      if (wr.ok) { const wd = await wr.json(); setBalance(wd.balance); }
+      toast('🎉 Order #' + d.order_id + ' placed!', 'ok');
+    } else {
+      toast('❌ ' + (d.error || 'Order failed'), 'err');
+    }
+  } catch { toast('❌ Network error', 'err'); }
+  finally { btn.disabled = false; btn.textContent = '✅ Place Order'; }
+}
+
+/* wallet */
+function openWallet()  { document.getElementById('wmodal').classList.add('show'); }
+function closeWallet() { document.getElementById('wmodal').classList.remove('show'); }
+function preset(n, el) {
+  document.getElementById('amt').value = n;
+  document.querySelectorAll('.pre-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+async function addFunds() {
+  const amount = parseFloat(document.getElementById('amt').value);
+  if (!amount || amount <= 0) { toast('Enter a valid amount', 'err'); return; }
+  try {
+    const r = await fetch(`/customer/${CID}/add-funds`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ amount })
+    });
+    const d = await r.json();
+    if (r.ok) { setBalance(d.new_balance); closeWallet(); toast('💰 ₹' + amount.toFixed(0) + ' added!', 'ok'); renderCart(); }
+    else { toast('❌ ' + d.error, 'err'); }
+  } catch { toast('❌ Network error', 'err'); }
+}
+
+function setBalance(b) {
+  balance = b;
+  document.getElementById('wd').textContent   = b.toFixed(2);
+  document.getElementById('wbal').textContent = '₹' + b.toFixed(2);
+  document.getElementById('mbal').textContent = b.toFixed(2);
+}
+
+document.getElementById('wmodal').addEventListener('click', e => { if(e.target===e.currentTarget) closeWallet(); });
+
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+renderCart();
+</script>
+</body>
+</html>

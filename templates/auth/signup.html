@@ -4,12 +4,7 @@
 <title>Signup</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --ink: #1a1a2e;
@@ -33,36 +28,31 @@ body {
   overflow: hidden;
 }
 
-/* Decorative background */
 body::before {
   content: '';
   position: fixed;
-  top: -40%;
-  right: -20%;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(200, 169, 110, 0.12) 0%, transparent 70%);
+  top: -40%; right: -20%;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(200,169,110,0.12) 0%, transparent 70%);
   pointer-events: none;
 }
 
 body::after {
   content: '';
   position: fixed;
-  bottom: -30%;
-  left: -15%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(26, 26, 46, 0.06) 0%, transparent 70%);
+  bottom: -30%; left: -15%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(26,26,46,0.06) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .container {
-  width: 420px;
+  width: 440px;
   background: white;
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 48px 44px;
-  box-shadow: 0 4px 40px rgba(26, 26, 46, 0.08);
+  padding: 44px 44px;
+  box-shadow: 0 4px 40px rgba(26,26,46,0.08);
   position: relative;
   animation: fadeUp 0.5s ease both;
 }
@@ -72,7 +62,6 @@ body::after {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Gold corner accent */
 .container::before {
   content: '';
   position: absolute;
@@ -81,7 +70,6 @@ body::after {
   border-top: 3px solid var(--accent);
   border-left: 3px solid var(--accent);
 }
-
 .container::after {
   content: '';
   position: absolute;
@@ -92,202 +80,116 @@ body::after {
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 32px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 28px;
 }
-
-.brand-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--accent);
-  border-radius: 50%;
-}
-
+.brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
 .brand-name {
   font-family: 'DM Serif Display', serif;
-  font-size: 15px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink);
+  font-size: 15px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink);
 }
 
 h2 {
   font-family: 'DM Serif Display', serif;
-  font-size: 32px;
-  font-weight: 400;
-  color: var(--ink);
-  line-height: 1.1;
-  margin-bottom: 6px;
+  font-size: 30px; font-weight: 400;
+  color: var(--ink); line-height: 1.1;
+  margin-bottom: 4px;
 }
-
 .subtitle {
-  font-size: 14px;
-  color: var(--muted);
-  font-weight: 300;
-  margin-bottom: 36px;
+  font-size: 14px; color: var(--muted); font-weight: 300;
+  margin-bottom: 28px;
 }
 
-.field {
-  margin-bottom: 20px;
+/* Two column row for name fields */
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
 }
+
+.field { margin-bottom: 18px; }
+.field:last-of-type { margin-bottom: 0; }
 
 label {
   display: block;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 8px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 7px;
 }
 
 input, select {
-  width: 100%;
-  padding: 12px 14px;
+  width: 100%; padding: 11px 13px;
   background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
+  border: 1px solid var(--border); border-radius: 2px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px;
   color: var(--ink);
   transition: border-color 0.2s, box-shadow 0.2s;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
+  outline: none; appearance: none; -webkit-appearance: none;
 }
-
-input::placeholder {
-  color: #bbb;
-}
-
+input::placeholder { color: #bbb; }
 input:focus, select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.12);
+  box-shadow: 0 0 0 3px rgba(200,169,110,0.12);
   background: white;
 }
 
-.select-wrapper {
-  position: relative;
-}
-
+.select-wrapper { position: relative; }
 .select-wrapper::after {
   content: '▾';
-  position: absolute;
-  right: 14px;
-  top: 50%;
+  position: absolute; right: 13px; top: 50%;
   transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
-  font-size: 13px;
+  color: var(--muted); pointer-events: none; font-size: 13px;
 }
+
+/* Only show name fields for customer role */
+#name-fields { display: none; }
+#name-fields.show { display: contents; }
 
 button {
-  width: 100%;
-  padding: 14px;
-  background: var(--ink);
-  color: white;
-  border: none;
-  border-radius: 2px;
+  width: 100%; padding: 13px;
+  background: var(--ink); color: white;
+  border: none; border-radius: 2px;
   font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-  margin-top: 8px;
-  position: relative;
-  overflow: hidden;
+  font-size: 14px; font-weight: 500; letter-spacing: 0.06em;
+  cursor: pointer; transition: background 0.2s, transform 0.1s;
+  margin-top: 20px; position: relative; overflow: hidden;
 }
-
-button:hover:not(:disabled) {
-  background: #2d2d4a;
-}
-
-button:active:not(:disabled) {
-  transform: scale(0.99);
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+button:hover:not(:disabled) { background: #2d2d4a; }
+button:active:not(:disabled) { transform: scale(0.99); }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-text { transition: opacity 0.2s; }
-
-.spinner {
-  display: none;
-  position: absolute;
-  inset: 0;
-  align-items: center;
-  justify-content: center;
-}
-
+.spinner { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; }
 button.loading .btn-text { opacity: 0; }
 button.loading .spinner { display: flex; }
-
 .spinner::after {
-  content: '';
-  width: 16px;
-  height: 16px;
+  content: ''; width: 16px; height: 16px;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
-  border-radius: 50%;
+  border-top-color: white; border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .login-link {
-  display: block;
-  text-align: center;
-  margin-top: 24px;
-  font-size: 13px;
-  color: var(--muted);
-  text-decoration: none;
+  display: block; text-align: center;
+  margin-top: 20px; font-size: 13px; color: var(--muted); text-decoration: none;
 }
-
-.login-link span {
-  color: var(--ink);
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.login-link:hover span {
-  color: var(--accent-dark);
-}
+.login-link span { color: var(--ink); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.login-link:hover span { color: var(--accent-dark); }
 
 #msg {
-  margin-top: 16px;
-  padding: 10px 14px;
-  border-radius: 2px;
-  font-size: 13px;
-  text-align: center;
-  display: none;
+  margin-top: 14px; padding: 10px 14px; border-radius: 2px;
+  font-size: 13px; text-align: center; display: none;
 }
-
-#msg.error {
-  background: #fdf2f2;
-  border: 1px solid #f5c6c6;
-  color: var(--error);
-  display: block;
-}
-
-#msg.success {
-  background: #f2fbf6;
-  border: 1px solid #b2dfc5;
-  color: var(--success);
-  display: block;
-}
-
+#msg.error   { background: #fdf2f2; border: 1px solid #f5c6c6; color: var(--error); display: block; }
+#msg.success { background: #f2fbf6; border: 1px solid #b2dfc5; color: var(--success); display: block; }
 </style>
 </head>
 <body>
 
 <div class="container">
-
   <div class="brand">
     <div class="brand-dot"></div>
     <span class="brand-name">Platform</span>
@@ -296,20 +198,32 @@ button.loading .spinner { display: flex; }
   <h2>Create account</h2>
   <p class="subtitle">Join us — it only takes a moment.</p>
 
+  <!-- Name fields — shown only when Customer is selected -->
+  <div class="row-2" id="name-fields">
+    <div class="field">
+      <label for="first_name">First Name</label>
+      <input id="first_name" type="text" placeholder="Amit"/>
+    </div>
+    <div class="field">
+      <label for="last_name">Last Name</label>
+      <input id="last_name" type="text" placeholder="Verma"/>
+    </div>
+  </div>
+
   <div class="field">
     <label for="username">Username</label>
-    <input id="username" type="text" placeholder="Enter your username" autocomplete="username">
+    <input id="username" type="text" placeholder="Enter your username" autocomplete="username"/>
   </div>
 
   <div class="field">
     <label for="password">Password</label>
-    <input id="password" type="password" placeholder="Create a password" autocomplete="new-password">
+    <input id="password" type="password" placeholder="Create a password" autocomplete="new-password"/>
   </div>
 
   <div class="field">
     <label for="role">Role</label>
     <div class="select-wrapper">
-      <select id="role">
+      <select id="role" onchange="onRoleChange()">
         <option value="1">Producer</option>
         <option value="2">Admin</option>
         <option value="3">Customer</option>
@@ -323,90 +237,78 @@ button.loading .spinner { display: flex; }
   </button>
 
   <a href="/login" class="login-link">Already have an account? <span>Log in</span></a>
-
   <p id="msg"></p>
-
 </div>
 
 <script>
+function onRoleChange() {
+  const role = parseInt(document.getElementById("role").value);
+  const nameFields = document.getElementById("name-fields");
+  if (role === 3) {
+    nameFields.classList.add("show");
+  } else {
+    nameFields.classList.remove("show");
+    document.getElementById("first_name").value = "";
+    document.getElementById("last_name").value = "";
+  }
+}
 
 function setMessage(text, type) {
   const msg = document.getElementById("msg");
   msg.textContent = text;
-  msg.className = type; // 'error' or 'success'
+  msg.className = type;
 }
 
 function signup() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value;
-  const role_id  = parseInt(document.getElementById("role").value);
-  const btn      = document.getElementById("signupBtn");
+  const username   = document.getElementById("username").value.trim();
+  const password   = document.getElementById("password").value;
+  const role_id    = parseInt(document.getElementById("role").value);
+  const first_name = document.getElementById("first_name").value.trim();
+  const last_name  = document.getElementById("last_name").value.trim();
+  const btn        = document.getElementById("signupBtn");
 
-  // --- Input validation ---
-  if (!username) {
-    setMessage("Please enter a username.", "error");
-    document.getElementById("username").focus();
-    return;
-  }
-  if (!password) {
-    setMessage("Please enter a password.", "error");
-    document.getElementById("password").focus();
-    return;
-  }
-  if (password.length < 6) {
-    setMessage("Password must be at least 6 characters.", "error");
-    return;
+  if (!username) { setMessage("Please enter a username.", "error"); return; }
+  if (!password) { setMessage("Please enter a password.", "error"); return; }
+  if (password.length < 6) { setMessage("Password must be at least 6 characters.", "error"); return; }
+
+  // Require name for customers
+  if (role_id === 3) {
+    if (!first_name) { setMessage("Please enter your first name.", "error"); return; }
+    if (!last_name)  { setMessage("Please enter your last name.", "error"); return; }
   }
 
-  // --- Loading state ---
   btn.disabled = true;
   btn.classList.add("loading");
   setMessage("", "");
 
-  fetch("http://127.0.0.1:5000/signup", {
+  fetch("/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, role_id })
+    body: JSON.stringify({ username, password, role_id, first_name, last_name })
   })
-  .then(res => {
-    if (!res.ok && res.status !== 400) {
-      throw new Error("Server error (" + res.status + ")");
-    }
-    return res.json();
-  })
+  .then(res => res.json())
   .then(data => {
-    if (data.error) {
-      setMessage(data.error, "error");
-      return;
-    }
+    if (data.error) { setMessage(data.error, "error"); return; }
 
-    // Use returned role_id or fall back to what was selected
     const role = data.role_id ?? role_id;
-
+    const id   = data.user_id;
     setMessage("Account created! Redirecting…", "success");
 
     setTimeout(() => {
-      if      (role === 1) window.location.href = "/producer";
-      else if (role === 2) window.location.href = "/admin";
-      else if (role === 3) window.location.href = "/customer";
+      if      (role === 1) window.location.href = "/producer/" + id;
+      else if (role === 2) window.location.href = "/warehouse/" + id;
+      else if (role === 3) window.location.href = "/customer/"  + id;
       else                 window.location.href = "/";
     }, 800);
   })
-  .catch(err => {
-    setMessage("Could not connect to the server. Please try again.", "error");
-    console.error("Signup error:", err);
-  })
+  .catch(() => setMessage("Could not connect to the server.", "error"))
   .finally(() => {
     btn.disabled = false;
     btn.classList.remove("loading");
   });
 }
 
-// Allow Enter key to submit
-document.addEventListener("keydown", e => {
-  if (e.key === "Enter") signup();
-});
-
+document.addEventListener("keydown", e => { if (e.key === "Enter") signup(); });
 </script>
 </body>
 </html>
