@@ -61,23 +61,57 @@ def signup():
     auth_conn = None
     db_conn   = None
     try:
-        data       = request.json
-        username   = data["username"]
-        password   = data["password"]
-        role_id    = int(data["role_id"])
-        first_name = data.get("first_name", "").strip()
-        last_name  = data.get("last_name", "").strip()
+        data     = request.json
+        username = data["username"]
+        password = data["password"]
+        role_id  = int(data["role_id"])
 
-        if role_id == 3 and (not first_name or not last_name):
-            return {"error": "First and last name are required for customers."}, 400
+        if len(password) < 6:
+            return {"error": "Password must be at least 6 characters."}, 400
 
         hashed    = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
         linked_id = None
 
-        # ── Customer: create Customer row + Wallet in supplychain_db ──
-        if role_id == 3:
-            db_conn = get_db_connection()
-            db_cur  = db_conn.cursor()
+        db_conn = get_db_connection()
+        db_cur  = db_conn.cursor()
+
+        # ── PRODUCER: create Producer row ────────────────────────────
+        if role_id == 1:
+            company_name = data.get("company_name", "").strip()
+            phone        = data.get("phone", "").strip()
+            email        = data.get("email", "").strip()
+            if not company_name:
+                return {"error": "Company name is required."}, 400
+            if not phone:
+                return {"error": "Phone number is required."}, 400
+            if not email:
+                return {"error": "Email is required."}, 400
+
+            db_conn.start_transaction()
+            db_cur.execute(
+                """INSERT INTO Producer (producer_name, phone, email, approval_status, earnings)
+                   VALUES (%s, %s, %s, 'Approved', 0.00)""",
+                (company_name, phone, email)
+            )
+            linked_id = db_cur.lastrowid
+            db_conn.commit()
+
+        # ── ADMIN: always link to warehouse_id = 1 (Main Warehouse) ──
+        elif role_id == 2:
+            # Make sure warehouse 1 exists
+            db_cur.execute("SELECT warehouse_id FROM Warehouse WHERE warehouse_id = 1")
+            wh = db_cur.fetchone()
+            if not wh:
+                return {"error": "Main Warehouse (id=1) not found. Run data.sql first."}, 400
+            linked_id = 1
+
+        # ── CUSTOMER: create Customer row + Wallet ───────────────────
+        elif role_id == 3:
+            first_name = data.get("first_name", "").strip()
+            last_name  = data.get("last_name", "").strip()
+            if not first_name or not last_name:
+                return {"error": "First and last name are required for customers."}, 400
+
             db_conn.start_transaction()
             db_cur.execute(
                 "INSERT INTO Customer (first_name, last_name, email) VALUES (%s, %s, %s)",
@@ -89,9 +123,10 @@ def signup():
                 (linked_id,)
             )
             db_conn.commit()
-            db_cur.close()
 
-        # ── Create auth user ──────────────────────────────────────────
+        db_cur.close()
+
+        # ── Create auth user with linked_id ──────────────────────────
         auth_conn = get_auth_connection()
         auth_cur  = auth_conn.cursor()
         auth_cur.execute(
@@ -108,7 +143,7 @@ def signup():
             try: db_conn.rollback()
             except: pass
         if e.errno == 1062:
-            return {"error": "Username already exists"}, 409
+            return {"error": "Username already exists."}, 409
         return {"error": "Signup failed", "details": str(e)}, 500
     except Exception as e:
         if db_conn:
@@ -138,7 +173,11 @@ def login():
             return {"error": "User not found"}, 404
         if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
             return {"error": "Invalid password"}, 401
-        return {"message": "Login successful", "role_id": user["role_id"], "user_id": user["linked_id"]}, 200
+        return {
+            "message":  "Login successful",
+            "role_id":  user["role_id"],
+            "user_id":  user["linked_id"]
+        }, 200
     except Exception as e:
         return {"error": str(e)}, 500
     finally:
@@ -431,7 +470,8 @@ def warehouse_dashboard(warehouse_id):
             FROM Restock_Request rr
             JOIN Producer pr ON rr.producer_id = pr.producer_id
             JOIN Product   p  ON rr.product_id  = p.product_id
-            JOIN Producer_Product pp ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
+            JOIN Producer_Product pp
+                ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
             WHERE rr.warehouse_id = %s
             ORDER BY rr.created_at DESC LIMIT 20
         """, (warehouse_id,))
@@ -440,20 +480,44 @@ def warehouse_dashboard(warehouse_id):
             SELECT rr.request_id, rr.requested_qty, rr.quoted_price,
                    pp.price_before_tax AS current_price, p.product_name, pr.producer_name
             FROM Restock_Request rr
-            JOIN Producer_Product pp ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
+            JOIN Producer_Product pp
+                ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
             JOIN Product   p  ON p.product_id   = rr.product_id
             JOIN Producer  pr ON pr.producer_id = rr.producer_id
             WHERE rr.warehouse_id = %s AND rr.status = 'Pending'
-              AND rr.quoted_price IS NOT NULL AND rr.quoted_price != pp.price_before_tax
+              AND rr.quoted_price IS NOT NULL
+              AND rr.quoted_price != pp.price_before_tax
         """, (warehouse_id,))
         price_alerts = cursor.fetchall()
+        cursor.execute("""
+            SELECT
+                o.order_id, c.first_name, c.last_name,
+                o.order_status, o.total_amount, o.total_items, o.created_at,
+                GROUP_CONCAT(p.product_name, ' ×', oi.quantity
+                    ORDER BY p.product_name SEPARATOR ' | ') AS items_summary
+            FROM `Order` o
+            JOIN Customer   c  ON o.customer_id  = c.customer_id
+            JOIN Order_Item oi ON oi.order_id     = o.order_id
+            JOIN Product    p  ON p.product_id    = oi.product_id
+            WHERE o.warehouse_id = %s
+              AND o.order_status IN ('CONFIRMED', 'DELIVERED')
+            GROUP BY o.order_id, c.first_name, c.last_name,
+                     o.order_status, o.total_amount, o.total_items, o.created_at
+            ORDER BY o.created_at DESC LIMIT 30
+        """, (warehouse_id,))
+        customer_orders = cursor.fetchall()
+        for o in customer_orders:
+            if o['total_amount']:
+                o['total_amount'] = float(o['total_amount'])
         return render_template("admin/admin.html",
             warehouse=warehouse, catalogue=catalogue,
-            requests=requests_list, price_alerts=price_alerts)
+            requests=requests_list, price_alerts=price_alerts,
+            customer_orders=customer_orders)
     except Exception as e:
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
         if conn: conn.close()
+
 
 @app.route("/warehouse/<int:warehouse_id>/send-request", methods=["POST"])
 def send_request(warehouse_id):
@@ -486,6 +550,7 @@ def send_request(warehouse_id):
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
 
+
 @app.route("/warehouse/<int:warehouse_id>/accept-price-change/<int:request_id>", methods=["POST"])
 def accept_price_change(warehouse_id, request_id):
     conn = None
@@ -494,7 +559,8 @@ def accept_price_change(warehouse_id, request_id):
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE Restock_Request rr
-            JOIN Producer_Product pp ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
+            JOIN Producer_Product pp
+                ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
             SET rr.quoted_price = pp.price_before_tax
             WHERE rr.request_id = %s
         """, (request_id,))
@@ -507,6 +573,7 @@ def accept_price_change(warehouse_id, request_id):
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
 
+
 @app.route("/warehouse/<int:warehouse_id>/cancel-request/<int:request_id>", methods=["POST"])
 def cancel_request(warehouse_id, request_id):
     conn = None
@@ -514,11 +581,60 @@ def cancel_request(warehouse_id, request_id):
         conn   = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE Restock_Request SET status = 'Cancelled' WHERE request_id = %s AND status = 'Pending'",
+            "UPDATE Restock_Request SET status = 'Cancelled' WHERE request_id=%s AND status='Pending'",
             (request_id,)
         )
         conn.commit()
         flash("Request cancelled.", "warning")
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f"Error: {str(e)}", "danger")
+    finally:
+        if conn: conn.close()
+    return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
+
+
+@app.route("/warehouse/<int:warehouse_id>/deliver-order/<int:order_id>", methods=["POST"])
+def deliver_order(warehouse_id, order_id):
+    conn = None
+    try:
+        conn   = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE `Order` SET order_status = 'DELIVERED'
+            WHERE order_id = %s AND warehouse_id = %s AND order_status = 'CONFIRMED'
+        """, (order_id, warehouse_id))
+        if cursor.rowcount == 0:
+            flash(f"Order #{order_id} could not be updated.", "warning")
+        else:
+            conn.commit()
+            flash(f"✓ Order #{order_id} marked as Delivered!", "success")
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f"Error: {str(e)}", "danger")
+    finally:
+        if conn: conn.close()
+    return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
+
+
+@app.route("/warehouse/<int:warehouse_id>/add-budget", methods=["POST"])
+def add_budget(warehouse_id):
+    conn = None
+    try:
+        amount = float(request.form.get("amount", 0))
+        if amount <= 0:
+            flash("Amount must be greater than 0.", "danger")
+            return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "UPDATE Warehouse SET budget = budget + %s WHERE warehouse_id = %s",
+            (amount, warehouse_id)
+        )
+        conn.commit()
+        cursor.execute("SELECT budget FROM Warehouse WHERE warehouse_id = %s", (warehouse_id,))
+        new_budget = float(cursor.fetchone()["budget"])
+        flash(f"✓ Budget topped up by ₹{amount:,.0f}. New budget: ₹{new_budget:,.0f}", "success")
     except Exception as e:
         if conn: conn.rollback()
         flash(f"Error: {str(e)}", "danger")
@@ -555,7 +671,8 @@ def producer_dashboard(producer_id):
             FROM Restock_Request rr
             JOIN Product   p  ON rr.product_id  = p.product_id
             JOIN Warehouse w  ON rr.warehouse_id = w.warehouse_id
-            JOIN Producer_Product pp ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
+            JOIN Producer_Product pp
+                ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
             WHERE rr.producer_id = %s AND rr.status = 'Pending'
             ORDER BY rr.created_at DESC
         """, (producer_id,))
@@ -576,6 +693,7 @@ def producer_dashboard(producer_id):
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
         if conn: conn.close()
+
 
 @app.route("/producer/add-product/<int:producer_id>", methods=["POST"])
 def add_product(producer_id):
@@ -600,7 +718,7 @@ def add_product(producer_id):
         if existing:
             product_id = existing["product_id"]
             cursor.execute(
-                "SELECT 1 FROM Producer_Product WHERE producer_id = %s AND product_id = %s",
+                "SELECT 1 FROM Producer_Product WHERE producer_id=%s AND product_id=%s",
                 (producer_id, product_id)
             )
             if cursor.fetchone():
@@ -623,6 +741,7 @@ def add_product(producer_id):
         if conn: conn.close()
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
 
+
 @app.route("/producer/change-price/<int:producer_id>", methods=["POST"])
 def change_price(producer_id):
     conn = None
@@ -641,7 +760,7 @@ def change_price(producer_id):
         old       = cursor.fetchone()
         old_price = float(old["price_before_tax"]) if old else 0
         cursor.execute(
-            "UPDATE Producer_Product SET price_before_tax = %s WHERE producer_id=%s AND product_id=%s",
+            "UPDATE Producer_Product SET price_before_tax=%s WHERE producer_id=%s AND product_id=%s",
             (new_price, producer_id, product_id)
         )
         cursor.execute("""
@@ -661,6 +780,7 @@ def change_price(producer_id):
         if conn: conn.close()
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
 
+
 @app.route("/producer/fulfill/<int:request_id>", methods=["POST"])
 def fulfill_request(request_id):
     conn = None; req = None
@@ -671,7 +791,8 @@ def fulfill_request(request_id):
         cursor.execute("""
             SELECT rr.*, pp.price_before_tax AS current_price
             FROM Restock_Request rr
-            JOIN Producer_Product pp ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
+            JOIN Producer_Product pp
+                ON pp.producer_id = rr.producer_id AND pp.product_id = rr.product_id
             WHERE rr.request_id = %s AND rr.status = 'Pending'
             FOR UPDATE
         """, (request_id,))
@@ -789,8 +910,6 @@ def customer_checkout(customer_id):
             return jsonify({"error": "Cart is empty"}), 400
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # TX 1: create order + reserve inventory
         conn.start_transaction()
         cursor.execute(
             "INSERT INTO `Order` (customer_id, warehouse_id, order_status) VALUES (%s, %s, 'CREATED')",
@@ -803,8 +922,6 @@ def customer_checkout(customer_id):
                 (order_id, item["product_id"], item["qty"], item["unit_price"])
             )
         conn.commit()
-
-        # TX 2: confirm — trigger debits wallet
         conn.start_transaction()
         cursor.execute(
             "UPDATE `Order` SET order_status = 'CONFIRMED' WHERE order_id = %s",
@@ -812,7 +929,6 @@ def customer_checkout(customer_id):
         )
         conn.commit()
         return jsonify({"message": "Order placed successfully", "order_id": order_id}), 201
-
     except Exception as e:
         if conn:
             try: conn.rollback()

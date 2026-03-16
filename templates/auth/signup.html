@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Signup</title>
+<title>Signup — WMS Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,8 +24,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 32px 16px;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -36,7 +37,6 @@ body::before {
   background: radial-gradient(circle, rgba(200,169,110,0.12) 0%, transparent 70%);
   pointer-events: none;
 }
-
 body::after {
   content: '';
   position: fixed;
@@ -47,7 +47,8 @@ body::after {
 }
 
 .container {
-  width: 440px;
+  width: 460px;
+  max-width: 100%;
   background: white;
   border: 1px solid var(--border);
   border-radius: 2px;
@@ -63,68 +64,59 @@ body::after {
 }
 
 .container::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
+  content: ''; position: absolute; top: 0; left: 0;
   width: 40px; height: 40px;
-  border-top: 3px solid var(--accent);
-  border-left: 3px solid var(--accent);
+  border-top: 3px solid var(--accent); border-left: 3px solid var(--accent);
 }
 .container::after {
-  content: '';
-  position: absolute;
-  bottom: 0; right: 0;
+  content: ''; position: absolute; bottom: 0; right: 0;
   width: 40px; height: 40px;
-  border-bottom: 3px solid var(--accent);
-  border-right: 3px solid var(--accent);
+  border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent);
 }
 
-.brand {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 28px;
-}
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
 .brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
-.brand-name {
-  font-family: 'DM Serif Display', serif;
-  font-size: 15px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--ink);
-}
+.brand-name { font-family: 'DM Serif Display', serif; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
 
-h2 {
-  font-family: 'DM Serif Display', serif;
-  font-size: 30px; font-weight: 400;
-  color: var(--ink); line-height: 1.1;
-  margin-bottom: 4px;
-}
-.subtitle {
-  font-size: 14px; color: var(--muted); font-weight: 300;
-  margin-bottom: 28px;
-}
+h2 { font-family: 'DM Serif Display', serif; font-size: 28px; font-weight: 400; color: var(--ink); line-height: 1.1; margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: var(--muted); font-weight: 300; margin-bottom: 22px; }
 
-/* Two column row for name fields */
-.row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 18px;
+/* ── ROLE SELECTOR ── */
+.role-selector { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 22px; }
+.role-btn {
+  flex: 1; padding: 10px 8px; text-align: center; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500;
+  background: white; color: var(--muted); border: none;
+  border-right: 1px solid var(--border); transition: all 0.18s;
 }
+.role-btn:last-child { border-right: none; }
+.role-btn.active { background: var(--ink); color: white; }
+.role-btn .role-icon { display: block; font-size: 1.1rem; margin-bottom: 3px; }
 
-.field { margin-bottom: 18px; }
-.field:last-of-type { margin-bottom: 0; }
+/* ── FIELD SECTIONS ── */
+/* all dynamic sections hidden by default */
+#fields-producer,
+#fields-admin,
+#fields-customer { display: none; }
+#fields-producer.show,
+#fields-admin.show,
+#fields-customer.show { display: block; }
+
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.field { margin-bottom: 16px; }
 
 label {
-  display: block;
-  font-size: 11px; font-weight: 500;
+  display: block; font-size: 11px; font-weight: 500;
   letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--muted); margin-bottom: 7px;
+  color: var(--muted); margin-bottom: 6px;
 }
 
 input, select {
   width: 100%; padding: 11px 13px;
   background: var(--paper);
   border: 1px solid var(--border); border-radius: 2px;
-  font-family: 'DM Sans', sans-serif; font-size: 14px;
-  color: var(--ink);
+  font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink);
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none; appearance: none; -webkit-appearance: none;
 }
@@ -135,30 +127,37 @@ input:focus, select:focus {
   background: white;
 }
 
-.select-wrapper { position: relative; }
-.select-wrapper::after {
-  content: '▾';
-  position: absolute; right: 13px; top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted); pointer-events: none; font-size: 13px;
+/* role hint box */
+.role-hint {
+  background: #f8f6f0; border: 1px solid var(--border); border-radius: 4px;
+  padding: 10px 14px; font-size: 0.78rem; color: var(--muted);
+  margin-bottom: 18px; line-height: 1.5;
+}
+.role-hint strong { color: var(--ink); }
+
+/* divider */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0 16px; color: var(--muted); font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
 }
 
-/* Only show name fields for customer role */
-#name-fields { display: none; }
-#name-fields.show { display: contents; }
-
-button {
+button[type="button"].submit-btn,
+button.submit-btn {
   width: 100%; padding: 13px;
   background: var(--ink); color: white;
   border: none; border-radius: 2px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px; font-weight: 500; letter-spacing: 0.06em;
   cursor: pointer; transition: background 0.2s, transform 0.1s;
-  margin-top: 20px; position: relative; overflow: hidden;
+  margin-top: 6px; position: relative; overflow: hidden;
 }
-button:hover:not(:disabled) { background: #2d2d4a; }
-button:active:not(:disabled) { transform: scale(0.99); }
-button:disabled { opacity: 0.6; cursor: not-allowed; }
+button.submit-btn:hover:not(:disabled) { background: #2d2d4a; }
+button.submit-btn:active:not(:disabled) { transform: scale(0.99); }
+button.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-text { transition: opacity 0.2s; }
 .spinner { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; }
@@ -174,141 +173,220 @@ button.loading .spinner { display: flex; }
 
 .login-link {
   display: block; text-align: center;
-  margin-top: 20px; font-size: 13px; color: var(--muted); text-decoration: none;
+  margin-top: 18px; font-size: 13px; color: var(--muted); text-decoration: none;
 }
 .login-link span { color: var(--ink); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
 .login-link:hover span { color: var(--accent-dark); }
 
-#msg {
-  margin-top: 14px; padding: 10px 14px; border-radius: 2px;
-  font-size: 13px; text-align: center; display: none;
-}
+#msg { margin-top: 12px; padding: 10px 14px; border-radius: 2px; font-size: 13px; text-align: center; display: none; }
 #msg.error   { background: #fdf2f2; border: 1px solid #f5c6c6; color: var(--error); display: block; }
 #msg.success { background: #f2fbf6; border: 1px solid #b2dfc5; color: var(--success); display: block; }
 </style>
 </head>
 <body>
-
 <div class="container">
+
   <div class="brand">
     <div class="brand-dot"></div>
-    <span class="brand-name">Platform</span>
+    <span class="brand-name">WMS Platform</span>
   </div>
 
   <h2>Create account</h2>
-  <p class="subtitle">Join us — it only takes a moment.</p>
+  <p class="subtitle">Choose your role to get started.</p>
 
-  <!-- Name fields — shown only when Customer is selected -->
-  <div class="row-2" id="name-fields">
-    <div class="field">
-      <label for="first_name">First Name</label>
-      <input id="first_name" type="text" placeholder="Amit"/>
+  <!-- ── ROLE SELECTOR ── -->
+  <div class="role-selector">
+    <button class="role-btn active" onclick="setRole(1, this)">
+      <span class="role-icon">🏭</span>Producer
+    </button>
+    <button class="role-btn" onclick="setRole(2, this)">
+      <span class="role-icon">🏢</span>Admin
+    </button>
+    <button class="role-btn" onclick="setRole(3, this)">
+      <span class="role-icon">🛒</span>Customer
+    </button>
+  </div>
+
+  <!-- ══ PRODUCER FIELDS ══ -->
+  <div id="fields-producer" class="show">
+    <div class="role-hint">
+      <strong>Producer account</strong> — Register your company to supply products to warehouses.
+      You'll be able to add products, set prices, and fulfill restock requests.
     </div>
     <div class="field">
-      <label for="last_name">Last Name</label>
-      <input id="last_name" type="text" placeholder="Verma"/>
+      <label>Company Name</label>
+      <input id="p_company" type="text" placeholder="e.g. Amul Dairy Ltd"/>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Phone</label>
+        <input id="p_phone" type="text" placeholder="9876543210"/>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input id="p_email" type="email" placeholder="contact@company.com"/>
+      </div>
+    </div>
+    <div class="divider">account credentials</div>
+    <div class="field">
+      <label>Username</label>
+      <input id="p_username" type="text" placeholder="Choose a username" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="p_password" type="password" placeholder="Min 6 characters" autocomplete="new-password"/>
     </div>
   </div>
 
-  <div class="field">
-    <label for="username">Username</label>
-    <input id="username" type="text" placeholder="Enter your username" autocomplete="username"/>
-  </div>
-
-  <div class="field">
-    <label for="password">Password</label>
-    <input id="password" type="password" placeholder="Create a password" autocomplete="new-password"/>
-  </div>
-
-  <div class="field">
-    <label for="role">Role</label>
-    <div class="select-wrapper">
-      <select id="role" onchange="onRoleChange()">
-        <option value="1">Producer</option>
-        <option value="2">Admin</option>
-        <option value="3">Customer</option>
-      </select>
+  <!-- ══ ADMIN FIELDS ══ -->
+  <div id="fields-admin">
+    <div class="role-hint">
+      <strong>Admin / Warehouse account</strong> — You'll manage the Main Warehouse: send restock
+      requests to producers and mark customer orders as delivered.
+    </div>
+    <div class="divider">account credentials</div>
+    <div class="field">
+      <label>Username</label>
+      <input id="a_username" type="text" placeholder="Choose a username" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="a_password" type="password" placeholder="Min 6 characters" autocomplete="new-password"/>
     </div>
   </div>
 
-  <button id="signupBtn" onclick="signup()">
+  <!-- ══ CUSTOMER FIELDS ══ -->
+  <div id="fields-customer">
+    <div class="role-hint">
+      <strong>Customer account</strong> — Shop from KiranaMart, add money to your wallet and place orders.
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>First Name</label>
+        <input id="c_first" type="text" placeholder="Amit"/>
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input id="c_last" type="text" placeholder="Verma"/>
+      </div>
+    </div>
+    <div class="divider">account credentials</div>
+    <div class="field">
+      <label>Username</label>
+      <input id="c_username" type="text" placeholder="Choose a username" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="c_password" type="password" placeholder="Min 6 characters" autocomplete="new-password"/>
+    </div>
+  </div>
+
+  <!-- ── SUBMIT ── -->
+  <button class="submit-btn" id="signupBtn" onclick="signup()">
     <span class="btn-text">Create Account</span>
     <span class="spinner"></span>
   </button>
 
   <a href="/login" class="login-link">Already have an account? <span>Log in</span></a>
   <p id="msg"></p>
+
 </div>
 
 <script>
-function onRoleChange() {
-  const role = parseInt(document.getElementById("role").value);
-  const nameFields = document.getElementById("name-fields");
-  if (role === 3) {
-    nameFields.classList.add("show");
-  } else {
-    nameFields.classList.remove("show");
-    document.getElementById("first_name").value = "";
-    document.getElementById("last_name").value = "";
-  }
+let currentRole = 1;
+
+function setRole(role, btn) {
+  currentRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('fields-producer').classList.toggle('show', role === 1);
+  document.getElementById('fields-admin').classList.toggle('show',    role === 2);
+  document.getElementById('fields-customer').classList.toggle('show', role === 3);
+  document.getElementById('msg').className = '';
+  document.getElementById('msg').textContent = '';
 }
 
 function setMessage(text, type) {
-  const msg = document.getElementById("msg");
-  msg.textContent = text;
-  msg.className = type;
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = type;
+}
+
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
 }
 
 function signup() {
-  const username   = document.getElementById("username").value.trim();
-  const password   = document.getElementById("password").value;
-  const role_id    = parseInt(document.getElementById("role").value);
-  const first_name = document.getElementById("first_name").value.trim();
-  const last_name  = document.getElementById("last_name").value.trim();
-  const btn        = document.getElementById("signupBtn");
+  const btn = document.getElementById('signupBtn');
+  setMessage('', '');
 
-  if (!username) { setMessage("Please enter a username.", "error"); return; }
-  if (!password) { setMessage("Please enter a password.", "error"); return; }
-  if (password.length < 6) { setMessage("Password must be at least 6 characters.", "error"); return; }
+  let payload = { role_id: currentRole };
 
-  // Require name for customers
-  if (role_id === 3) {
-    if (!first_name) { setMessage("Please enter your first name.", "error"); return; }
-    if (!last_name)  { setMessage("Please enter your last name.", "error"); return; }
+  if (currentRole === 1) {
+    // Producer
+    const company  = getVal('p_company');
+    const phone    = getVal('p_phone');
+    const email    = getVal('p_email');
+    const username = getVal('p_username');
+    const password = getVal('p_password');
+    if (!company)           { setMessage('Company name is required.', 'error'); return; }
+    if (!phone)             { setMessage('Phone number is required.', 'error'); return; }
+    if (!email)             { setMessage('Email is required.', 'error'); return; }
+    if (!username)          { setMessage('Username is required.', 'error'); return; }
+    if (password.length < 6){ setMessage('Password must be at least 6 characters.', 'error'); return; }
+    payload = { ...payload, company_name: company, phone, email, username, password };
+
+  } else if (currentRole === 2) {
+    // Admin
+    const username = getVal('a_username');
+    const password = getVal('a_password');
+    if (!username)          { setMessage('Username is required.', 'error'); return; }
+    if (password.length < 6){ setMessage('Password must be at least 6 characters.', 'error'); return; }
+    payload = { ...payload, username, password };
+
+  } else if (currentRole === 3) {
+    // Customer
+    const first    = getVal('c_first');
+    const last     = getVal('c_last');
+    const username = getVal('c_username');
+    const password = getVal('c_password');
+    if (!first)             { setMessage('First name is required.', 'error'); return; }
+    if (!last)              { setMessage('Last name is required.', 'error'); return; }
+    if (!username)          { setMessage('Username is required.', 'error'); return; }
+    if (password.length < 6){ setMessage('Password must be at least 6 characters.', 'error'); return; }
+    payload = { ...payload, first_name: first, last_name: last, username, password };
   }
 
   btn.disabled = true;
-  btn.classList.add("loading");
-  setMessage("", "");
+  btn.classList.add('loading');
 
-  fetch("/signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, role_id, first_name, last_name })
+  fetch('/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   })
   .then(res => res.json())
   .then(data => {
-    if (data.error) { setMessage(data.error, "error"); return; }
-
-    const role = data.role_id ?? role_id;
+    if (data.error) { setMessage(data.error, 'error'); return; }
+    const role = data.role_id ?? currentRole;
     const id   = data.user_id;
-    setMessage("Account created! Redirecting…", "success");
-
+    setMessage('Account created! Redirecting…', 'success');
     setTimeout(() => {
-      if      (role === 1) window.location.href = "/producer/" + id;
-      else if (role === 2) window.location.href = "/warehouse/" + id;
-      else if (role === 3) window.location.href = "/customer/"  + id;
-      else                 window.location.href = "/";
+      if      (role === 1) window.location.href = '/producer/' + id;
+      else if (role === 2) window.location.href = '/warehouse/' + id;
+      else if (role === 3) window.location.href = '/customer/'  + id;
+      else                 window.location.href = '/';
     }, 800);
   })
-  .catch(() => setMessage("Could not connect to the server.", "error"))
+  .catch(() => setMessage('Could not connect to the server.', 'error'))
   .finally(() => {
     btn.disabled = false;
-    btn.classList.remove("loading");
+    btn.classList.remove('loading');
   });
 }
 
-document.addEventListener("keydown", e => { if (e.key === "Enter") signup(); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter') signup(); });
 </script>
 </body>
 </html>
