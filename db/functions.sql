@@ -1,18 +1,18 @@
 USE supplychain_db;
 
--- ============================================================
--- DROP existing functions before recreating
--- ============================================================
+
+
+
 DROP FUNCTION IF EXISTS fn_price_with_tax;
 DROP FUNCTION IF EXISTS fn_wallet_balance;
 DROP FUNCTION IF EXISTS fn_stock_available;
 DROP FUNCTION IF EXISTS fn_producer_total_revenue;
 
--- ============================================================
--- FUNCTION 1: fn_price_with_tax
+
+-- FUNCTION : fn_price_with_tax
 -- Given price before tax, returns price with 20% GST
 -- Usage: SELECT fn_price_with_tax(100.00) → 120.00
--- ============================================================
+
 DELIMITER $$
 CREATE FUNCTION fn_price_with_tax(p_price DECIMAL(10,2))
 RETURNS DECIMAL(10,2)
@@ -23,11 +23,11 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================================
--- FUNCTION 2: fn_wallet_balance
+
+-- FUNCTION : fn_wallet_balance
 -- Returns current wallet balance for a customer
 -- Usage: SELECT fn_wallet_balance(1) → 1500.00
--- ============================================================
+
 DELIMITER $$
 CREATE FUNCTION fn_wallet_balance(p_customer_id INT)
 RETURNS DECIMAL(10,2)
@@ -41,11 +41,11 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================================
--- FUNCTION 3: fn_stock_available
+
+-- FUNCTION : fn_stock_available
 -- Returns available stock for a product in a warehouse
 -- Usage: SELECT fn_stock_available(1, 1) → 195
--- ============================================================
+
 DELIMITER $$
 CREATE FUNCTION fn_stock_available(p_product_id INT, p_warehouse_id INT)
 RETURNS INT
@@ -60,11 +60,11 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================================
--- FUNCTION 4: fn_producer_total_revenue
+
+-- FUNCTION : fn_producer_total_revenue
 -- Returns total revenue earned by a producer across all batches
 -- Usage: SELECT fn_producer_total_revenue(1) → 45000.00
--- ============================================================
+
 DELIMITER $$
 CREATE FUNCTION fn_producer_total_revenue(p_producer_id INT)
 RETURNS DECIMAL(12,2)
@@ -78,9 +78,9 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================================
--- VERIFY: Test all 4 functions
--- ============================================================
+
+-- testing of all 4 functions
+
 SELECT fn_price_with_tax(100.00)        AS price_with_tax;
 SELECT fn_wallet_balance(1)             AS customer_1_balance;
 SELECT fn_stock_available(1, 1)         AS amul_milk_stock;

@@ -1,8 +1,7 @@
 USE supplychain_db;
 
--- ============================================================
 -- AUDIT LOG TABLE
--- ============================================================
+
 CREATE TABLE IF NOT EXISTS Audit_Log (
     log_id        INT AUTO_INCREMENT PRIMARY KEY,
     table_name    VARCHAR(50)                      NOT NULL,
@@ -17,9 +16,10 @@ CREATE TABLE IF NOT EXISTS Audit_Log (
 
 DELIMITER $$
 
--- ============================================================
--- AUDIT TRIGGER 1: Producer approval status change
--- ============================================================
+--audit triggers =>
+
+--Producer approval status change
+
 DROP TRIGGER IF EXISTS trg_audit_producer_status$$
 CREATE TRIGGER trg_audit_producer_status
 AFTER UPDATE ON Producer
@@ -40,9 +40,8 @@ BEGIN
 END$$
 
 
--- ============================================================
--- AUDIT TRIGGER 2: Producer earnings change
--- ============================================================
+
+--Producer earnings change
 DROP TRIGGER IF EXISTS trg_audit_producer_earnings$$
 CREATE TRIGGER trg_audit_producer_earnings
 AFTER UPDATE ON Producer
@@ -63,9 +62,9 @@ BEGIN
 END$$
 
 
--- ============================================================
--- AUDIT TRIGGER 3: Price change
--- ============================================================
+
+-- Price change
+
 DROP TRIGGER IF EXISTS trg_audit_price_change$$
 CREATE TRIGGER trg_audit_price_change
 AFTER UPDATE ON Producer_Product
@@ -86,9 +85,9 @@ BEGIN
 END$$
 
 
--- ============================================================
--- AUDIT TRIGGER 4: Order status change
--- ============================================================
+
+--Order status change
+
 DROP TRIGGER IF EXISTS trg_audit_order_status$$
 CREATE TRIGGER trg_audit_order_status
 AFTER UPDATE ON `Order`
@@ -109,9 +108,9 @@ BEGIN
 END$$
 
 
--- ============================================================
--- AUDIT TRIGGER 5: Batch insert
--- ============================================================
+
+--Batch insert
+
 DROP TRIGGER IF EXISTS trg_audit_batch_insert$$
 CREATE TRIGGER trg_audit_batch_insert
 AFTER INSERT ON Batch
@@ -130,9 +129,9 @@ BEGIN
 END$$
 
 
--- ============================================================
--- AUDIT TRIGGER 6: Wallet balance change
--- ============================================================
+
+--Wallet balance change
+
 DROP TRIGGER IF EXISTS trg_audit_wallet$$
 CREATE TRIGGER trg_audit_wallet
 AFTER UPDATE ON Wallet
@@ -153,9 +152,9 @@ BEGIN
 END$$
 
 
--- ============================================================
--- AUDIT TRIGGER 7: Restock request status change
--- ============================================================
+
+--Restock request status change
+
 DROP TRIGGER IF EXISTS trg_audit_restock_status$$
 CREATE TRIGGER trg_audit_restock_status
 AFTER UPDATE ON Restock_Request
@@ -178,15 +177,15 @@ END$$
 DELIMITER ;
 
 
--- ============================================================
--- VERIFY TRIGGERS
--- ============================================================
+
+--verification of trgrs
+
 SHOW TRIGGERS WHERE `Table` IN (
 'Producer','Producer_Product','Order','Batch','Wallet','Restock_Request'
 );
 
 
--- ============================================================
--- VIEW RECENT AUDIT LOGS
--- ============================================================
+
+--view recent audit logs
+
 SELECT * FROM Audit_Log ORDER BY changed_at DESC LIMIT 20;

@@ -1,4 +1,4 @@
-
+--not complete , may be changed later
 
 USE supplychain_db;
 
@@ -124,9 +124,9 @@ INSERT INTO Reorder_Config (product_id, warehouse_id, min_threshold) VALUES
 (4, 1, 40),
 (5, 1, 35);
 
--- ===============================
+
 -- Create a Sample Order
--- ===============================
+
 
 INSERT INTO `Order` (customer_id, warehouse_id) VALUES
 (1,1),
@@ -138,9 +138,9 @@ INSERT INTO `Order` (customer_id, warehouse_id) VALUES
 (7,1),
 (8,1);
 
--- ===============================
+
 -- Add Items to the Order
--- ===============================
+
 INSERT INTO Order_Item (order_id, product_id, quantity, unit_price) VALUES
 (1,1,5,12),
 (1,4,3,15),
@@ -166,9 +166,9 @@ INSERT INTO Order_Item (order_id, product_id, quantity, unit_price) VALUES
 (8,7,3,25),
 (8,13,1,90);
 
--- ===============================
+
 -- Check Order Totals (Triggers should update automatically)
--- ===============================
+
 UPDATE `Order`
 SET order_status='CONFIRMED'
 WHERE order_id IN (1,2,3);
@@ -184,10 +184,10 @@ FROM `Order`
 WHERE order_id = 1;
 
 
--- ===============================
+
 -- Confirm the Order
 -- (Wallet trigger will execute)
--- ===============================
+
 
 UPDATE `Order`
 SET order_status = 'CONFIRMED'

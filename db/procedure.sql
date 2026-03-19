@@ -1,22 +1,19 @@
 USE supplychain_db;
 
--- ============================================================
--- DROP existing procedures cleanly before recreating
--- ============================================================
 DROP PROCEDURE IF EXISTS sp_place_order;
 DROP PROCEDURE IF EXISTS sp_fulfill_request;
 DROP PROCEDURE IF EXISTS sp_cancel_order;
 DROP PROCEDURE IF EXISTS sp_add_funds;
 DROP PROCEDURE IF EXISTS sp_approve_producer;
 
--- ============================================================
+
 -- STORED PROCEDURE 1: sp_place_order
 -- Creates an order + inserts all items + confirms in one call
 -- Called from Flask: CALL sp_place_order(customer_id, warehouse_id, items_json, OUT order_id, OUT error_msg)
 --
 -- Chapter 5 concept: Stored Procedure with IN/OUT params,
 -- conditional logic, exception handling, multiple DML statements
--- ============================================================
+
 DELIMITER $$
 
 CREATE PROCEDURE sp_place_order(
@@ -74,17 +71,8 @@ BEGIN
     INSERT INTO `Order` (customer_id, warehouse_id, order_status)
     VALUES (p_customer_id, p_warehouse_id, 'CREATED');
 
-    SET p_order_id = LAST_INSERT_ID();
+    SET p_order_id = LAST_IN
 
-    COMMIT;
-
-    SET p_error = NULL;
-END$$
-
-DELIMITER ;
-
-
--- ============================================================
 -- STORED PROCEDURE 2: sp_fulfill_request
 -- Producer fulfills a restock request: creates Batch,
 -- updates earnings, marks request Fulfilled
@@ -92,7 +80,7 @@ DELIMITER ;
 --
 -- Chapter 5 concept: Stored Procedure, FOR UPDATE locking,
 -- SIGNAL for business rule violations, multi-table updates
--- ============================================================
+
 DELIMITER $$
 
 CREATE PROCEDURE sp_fulfill_request(
@@ -180,7 +168,7 @@ END$$
 DELIMITER ;
 
 
--- ============================================================
+
 -- STORED PROCEDURE 3: sp_cancel_order
 -- Customer cancels a CREATED order:
 -- restores inventory reserved_qty → available_qty,
@@ -189,7 +177,7 @@ DELIMITER ;
 --
 -- Chapter 5 concept: Stored Procedure, CASE statement,
 -- conditional refund logic, multi-table transaction
--- ============================================================
+
 DELIMITER $$
 
 CREATE PROCEDURE sp_cancel_order(
@@ -277,14 +265,14 @@ END$$
 DELIMITER ;
 
 
--- ============================================================
+
 -- STORED PROCEDURE 4: sp_add_funds
 -- Adds money to a customer's wallet
 -- Creates wallet if it doesn't exist (upsert pattern)
 --
 -- Chapter 5 concept: Stored Procedure with IF/ELSE,
 -- INSERT ... ON DUPLICATE KEY, OUT parameter
--- ============================================================
+
 DELIMITER $$
 
 CREATE PROCEDURE sp_add_funds(
@@ -335,14 +323,14 @@ END$$
 DELIMITER ;
 
 
--- ============================================================
+
 -- STORED PROCEDURE 5: sp_approve_producer
 -- Admin approves or rejects a producer
 -- Validates the status value, updates, returns result
 --
 -- Chapter 5 concept: Stored Procedure with CASE statement,
 -- admin workflow automation, validation logic
--- ============================================================
+
 DELIMITER $$
 
 CREATE PROCEDURE sp_approve_producer(
@@ -397,11 +385,11 @@ END$$
 DELIMITER ;
 
 
--- ============================================================
+
 -- SUPPORTING TABLE: Order_Cancellation
 -- Logs every cancelled order for audit purposes
 -- Used by sp_cancel_order
--- ============================================================
+
 CREATE TABLE IF NOT EXISTS Order_Cancellation (
     cancellation_id INT AUTO_INCREMENT PRIMARY KEY,
     order_id        INT NOT NULL,
@@ -413,7 +401,7 @@ CREATE TABLE IF NOT EXISTS Order_Cancellation (
 ) ENGINE=InnoDB;
 
 
--- ============================================================
+
 -- VERIFY: show all procedures created
--- ============================================================
+
 SHOW PROCEDURE STATUS WHERE Db = 'supplychain_db';
