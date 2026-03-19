@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ warehouse.warehouse_name }} — Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0f1923;
+    --surface: #162030;
+    --surface2: #1c2a3a;
+    --border: #1e3148;
+    --ink: #e8f0f8;
+    --ink2: #7a9ab8;
+    --accent: #2d9cdb;
+    --accent-light: rgba(45,156,219,0.1);
+    --gold: #f2c94c;
+    --gold-light: rgba(242,201,76,0.08);
+    --green: #27ae60;
+    --green-light: rgba(39,174,96,0.1);
+    --red: #eb5757;
+    --red-light: rgba(235,87,87,0.1);
+    --purple: #9b59b6;
+    --purple-light: rgba(155,89,182,0.1);
+    --orange: #f39c12;
+    --orange-light: rgba(243,156,18,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Outfit', sans-serif; min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(45,156,219,0.05) 0%, transparent 50%),
+      radial-gradient(circle at 85% 85%, rgba(242,201,76,0.04) 0%, transparent 50%);
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 48px; display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 50;
+  }
+  .header-brand { font-family: 'DM Serif Display', serif; font-size: 1.2rem; }
+  .header-brand span { color: var(--accent); font-style: italic; }
+  .header-nav { display: flex; gap: 6px; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 8px; font-size: 0.82rem;
+    color: var(--ink2); text-decoration: none; transition: all .2s;
+  }
+  .nav-link:hover { background: var(--surface2); color: var(--ink); }
+  .nav-link.active { background: var(--accent-light); color: var(--accent); }
+
+  .page { max-width: 1400px; margin: 0 auto; padding: 32px 48px 80px; }
+
+  /* HERO */
+  .hero {
+    margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;
+  }
+  .hero h1 { font-family: 'DM Serif Display', serif; font-size: 2rem; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-sub { color: var(--ink2); font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+
+  /* SECTION TABS */
+  .tabs { display: flex; gap: 6px; margin-bottom: 28px; flex-wrap: wrap; }
+  .tab {
+    padding: 8px 18px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink2); font-size: 0.82rem;
+    cursor: pointer; transition: all .2s; font-family: 'Outfit', sans-serif;
+  }
+  .tab:hover { background: var(--surface2); color: var(--ink); }
+  .tab.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARD */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+  }
+  .card-header {
+    padding: 16px 22px 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .card-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.1rem; }
+  .card-header p { font-size: 0.78rem; color: var(--ink2); margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .badge {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    padding: 3px 10px; border-radius: 20px; font-weight: 500; white-space: nowrap;
+  }
+  .badge-blue   { background: var(--accent-light); color: var(--accent); }
+  .badge-gold   { background: var(--gold-light); color: var(--gold); }
+  .badge-green  { background: var(--green-light); color: #6fcf97; }
+  .badge-purple { background: var(--purple-light); color: var(--purple); }
+  .badge-orange { background: var(--orange-light); color: var(--orange); }
+  .badge-gray   { background: rgba(122,154,184,0.1); color: var(--ink2); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    text-align: left; padding: 10px 16px;
+    background: var(--surface2); color: var(--ink2);
+    font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 600; border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+
+  /* RANK DISPLAY */
+  .rank-1 { color: var(--gold); font-weight: 800; font-size: 1rem; }
+  .rank-2 { color: var(--ink2); font-weight: 700; }
+  .rank-3 { color: #cd7f32; font-weight: 700; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { background: var(--surface2); border-radius: 4px; height: 6px; width: 120px; overflow: hidden; }
+  .progress-bar  { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width .5s; }
+
+  /* ROLLUP ROWS */
+  .row-subtotal td { background: rgba(45,156,219,0.05); font-style: italic; color: var(--accent); }
+  .row-grand    td { background: rgba(242,201,76,0.08); font-weight: 700; color: var(--gold); font-size: 0.88rem; }
+
+  /* AUDIT LOG */
+  .audit-op-INSERT { color: #6fcf97; }
+  .audit-op-UPDATE { color: var(--gold); }
+  .audit-op-DELETE { color: var(--red); }
+
+  /* TREE */
+  .tree-root  { color: var(--accent); font-weight: 600; font-size: 0.85rem; }
+  .tree-leaf  { color: var(--ink2); font-size: 0.8rem; padding-left: 24px; }
+  .tree-row { padding: 6px 16px; border-bottom: 1px solid rgba(30,49,72,0.4); display: flex; align-items: center; gap: 10px; }
+  .tree-row:last-child { border-bottom: none; }
+
+  /* FUNCTION BADGE */
+  .fn-tag {
+    background: var(--purple-light); color: var(--purple);
+    border-radius: 4px; padding: 2px 6px;
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+  }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 40px; color: var(--ink2); font-size: 0.85rem; }
+
+  @media(max-width:900px){
+    .page { padding: 20px 16px 60px; }
+    .header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">WMS <span>Analytics</span></div>
+  <div class="header-nav">
+    <a href="/warehouse/{{ warehouse.warehouse_id }}" class="nav-link">📦 Dashboard</a>
+    <a href="/warehouse/{{ warehouse.warehouse_id }}/producers" class="nav-link">🏭 Producers</a>
+    <a href="/warehouse/{{ warehouse.warehouse_id }}/analytics" class="nav-link active">📊 Analytics</a>
+  </div>
+</header>
+
+<div class="page">
+  <div class="hero">
+    <div>
+      <h1>Advanced <em>Analytics</em></h1>
+      <div class="hero-sub">Window Functions · ROLLUP · Functions · Recursive Queries · Audit Log</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('window')">📊 Window Functions</button>
+    <button class="tab" onclick="showTab('rollup')">📋 ROLLUP Report</button>
+    <button class="tab" onclick="showTab('functions')">⚡ SQL Functions</button>
+    <button class="tab" onclick="showTab('recursive')">🌲 Recursive Query</button>
+    <button class="tab" onclick="showTab('audit')">🔍 Audit Log</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 1: WINDOW FUNCTIONS
+  ══════════════════════════════════════════════════════ -->
+  <div class="section active" id="tab-window">
+
+    <!-- Producer Rankings -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Producer Rankings by Earnings</h2>
+          <p>RANK() · DENSE_RANK() · ROW_NUMBER() · SUM() OVER ()</p>
+        </div>
+        <span class="badge badge-blue">Window Function</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Row#</th>
+              <th>Rank</th>
+              <th>Dense Rank</th>
+              <th>Producer</th>
+              <th>Status</th>
+              <th>Earnings</th>
+              <th>% Share</th>
+              <th>Share Bar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in producer_rankings %}
+            <tr>
+              <td class="mono">{{ p.row_num }}</td>
+              <td class="mono {% if p.earn_rank == 1 %}rank-1{% elif p.earn_rank == 2 %}rank-2{% elif p.earn_rank == 3 %}rank-3{% endif %}">
+                {% if p.earn_rank == 1 %}🥇{% elif p.earn_rank == 2 %}🥈{% elif p.earn_rank == 3 %}🥉{% endif %}
+                {{ p.earn_rank }}
+              </td>
+              <td class="mono" style="color:var(--ink2)">{{ p.earn_dense_rank }}</td>
+              <td style="font-weight:600">{{ p.producer_name }}</td>
+              <td>
+                <span style="background:{% if p.approval_status == 'Approved' %}var(--green-light){% elif p.approval_status == 'Pending' %}var(--gold-light){% else %}var(--red-light){% endif %};
+                      color:{% if p.approval_status == 'Approved' %}#6fcf97{% elif p.approval_status == 'Pending' %}var(--gold){% else %}var(--red){% endif %};
+                      border-radius:20px;padding:3px 10px;font-size:0.7rem;font-family:'DM Mono',monospace;">
+                  {{ p.approval_status }}
+                </span>
+              </td>
+              <td class="mono" style="color:var(--gold)">₹{{ "%.2f"|format(p.earnings) }}</td>
+              <td class="mono" style="color:var(--accent)">{{ p.pct_share }}%</td>
+              <td>
+                <div class="progress-wrap">
+                  <div class="progress-bar" style="width:{{ p.pct_share }}%"></div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Running Total -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Batch Cost — Running Total</h2>
+          <p>SUM() OVER (ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)</p>
+        </div>
+        <span class="badge badge-gold">Running Window</span>
+      </div>
+      <div class="table-wrap">
+        {% if running_batches %}
+        <table>
+          <thead>
+            <tr>
+              <th>Batch ID</th>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Unit Cost</th>
+              <th>Batch Value</th>
+              <th>Running Total ↑</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in running_batches %}
+            <tr>
+              <td class="mono">#{{ r.batch_id }}</td>
+              <td class="mono">{{ r.arrival_date }}</td>
+              <td style="font-weight:500">{{ r.product_name }}</td>
+              <td class="mono">{{ r.quantity }}</td>
+              <td class="mono">₹{{ "%.2f"|format(r.unit_cost) }}</td>
+              <td class="mono" style="color:var(--accent)">₹{{ "%.2f"|format(r.batch_value) }}</td>
+              <td class="mono" style="color:var(--gold);font-weight:600">₹{{ "%.2f"|format(r.running_total_cost) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state">No batch data available.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 2: ROLLUP
+  ══════════════════════════════════════════════════════ -->
+  <div class="section" id="tab-rollup">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Revenue Report with ROLLUP</h2>
+          <p>GROUP BY producer_name, product_name WITH ROLLUP — subtotals + grand total auto-generated</p>
+        </div>
+        <span class="badge badge-green">ROLLUP</span>
+      </div>
+      <div class="table-wrap">
+        {% if rollup_data %}
+        <table>
+          <thead>
+            <tr>
+              <th>Producer</th>
+              <th>Product</th>
+              <th>Total Units</th>
+              <th>Total Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rollup_data %}
+            <tr class="{% if r.is_grand %}row-grand{% elif r.is_subtotal %}row-subtotal{% endif %}">
+              <td style="font-weight:{% if r.is_grand or r.is_subtotal %}700{% else %}500{% endif %}">
+                {% if r.is_grand %}🏆 {% elif r.is_subtotal %}→ {% endif %}
+                {{ r.producer_name }}
+              </td>
+              <td>{{ r.product_name }}</td>
+              <td class="mono">{{ r.total_units }}</td>
+              <td class="mono" style="color:{% if r.is_grand %}var(--gold){% elif r.is_subtotal %}var(--accent){% else %}var(--ink){% endif %}">
+                ₹{{ "%.2f"|format(r.total_revenue) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state">No batch data for ROLLUP report.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 3: SQL FUNCTIONS
+  ══════════════════════════════════════════════════════ -->
+  <div class="section" id="tab-functions">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>SQL Functions in Action</h2>
+          <p>fn_price_with_tax() · fn_stock_available() · fn_producer_total_revenue() called inside SELECT</p>
+        </div>
+        <span class="badge badge-purple">4 Functions</span>
+      </div>
+
+      <!-- Function signatures -->
+      <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="fn-tag">fn_price_with_tax(price)</span>
+        <span class="fn-tag">fn_wallet_balance(customer_id)</span>
+        <span class="fn-tag">fn_stock_available(product_id, warehouse_id)</span>
+        <span class="fn-tag">fn_producer_total_revenue(producer_id)</span>
+      </div>
+
+      <div class="table-wrap">
+        {% if functions_demo %}
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Price (pre-tax)</th>
+              <th>fn_price_with_tax →</th>
+              <th>fn_stock_available →</th>
+              <th>Producer</th>
+              <th>fn_producer_total_revenue →</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in functions_demo %}
+            <tr>
+              <td style="font-weight:500">{{ f.product_name }}</td>
+              <td class="mono">₹{{ "%.2f"|format(f.price_before_tax) }}</td>
+              <td class="mono" style="color:var(--gold)">₹{{ "%.2f"|format(f.price_after_gst) }}</td>
+              <td class="mono" style="color:{% if f.stock_available > 100 %}#6fcf97{% elif f.stock_available > 0 %}var(--gold){% else %}var(--red){% endif %}">
+                {{ f.stock_available }} units
+              </td>
+              <td style="color:var(--ink2);font-size:0.8rem">{{ f.producer_name }}</td>
+              <td class="mono" style="color:var(--accent)">₹{{ "%.2f"|format(f.producer_revenue) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state">No data available.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 4: RECURSIVE QUERY
+  ══════════════════════════════════════════════════════ -->
+  <div class="section" id="tab-recursive">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Category Hierarchy — Recursive CTE</h2>
+          <p>WITH RECURSIVE category_tree AS — builds product tree from category → product</p>
+        </div>
+        <span class="badge badge-orange">WITH RECURSIVE</span>
+      </div>
+
+      <!-- SQL shown for examiner -->
+      <div style="padding:14px 22px;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <code style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--ink2);white-space:pre-wrap;">WITH RECURSIVE category_tree AS (
+    SELECT category AS category_name, 'ROOT' AS parent, 1 AS depth FROM Product GROUP BY category
+    UNION ALL
+    SELECT product_name, category, 2 FROM Product
+)
+SELECT * FROM category_tree ORDER BY parent, depth;</code>
+      </div>
+
+      <div>
+        {% set current_cat = namespace(name=None) %}
+        {% for row in category_tree %}
+          {% if row.depth == 1 %}
+            {% if current_cat.name is not none %}
+            {% endif %}
+            {% set current_cat.name = row.category_name %}
+            <div class="tree-row">
+              <span style="color:var(--accent);font-size:0.8rem">📁</span>
+              <span class="tree-root">{{ row.category_name }}</span>
+              <span class="mono" style="color:var(--ink2);font-size:0.7rem">depth={{ row.depth }} · path={{ row.path }}</span>
+            </div>
+          {% else %}
+            <div class="tree-row" style="background:rgba(30,49,72,0.3);">
+              <span style="color:var(--ink2);font-size:0.75rem;padding-left:20px">📄</span>
+              <span class="tree-leaf">{{ row.category_name }}</span>
+              <span class="mono" style="color:var(--ink2);font-size:0.68rem">depth={{ row.depth }}</span>
+            </div>
+          {% endif %}
+        {% endfor %}
+        {% if not category_tree %}
+          <div class="empty-state">No category data. Update Product categories in data.sql.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 5: AUDIT LOG
+  ══════════════════════════════════════════════════════ -->
+  <div class="section" id="tab-audit">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Audit Log — All DB Changes</h2>
+          <p>Trigger-based logging of every INSERT/UPDATE on key tables</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge badge-gray">{{ audit_logs|length }} recent entries</span>
+          <button onclick="refreshAudit()" style="background:var(--accent-light);color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:5px 12px;font-size:0.75rem;cursor:pointer;font-family:'Outfit',sans-serif;">
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap" id="auditTable">
+        {% if audit_logs %}
+        <table>
+          <thead>
+            <tr>
+              <th>Log ID</th>
+              <th>Table</th>
+              <th>Operation</th>
+              <th>Record ID</th>
+              <th>Field Changed</th>
+              <th>Old Value</th>
+              <th>New Value</th>
+              <th>Note</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in audit_logs %}
+            <tr>
+              <td class="mono">#{{ a.log_id }}</td>
+              <td class="mono" style="color:var(--accent)">{{ a.table_name }}</td>
+              <td><span class="audit-op-{{ a.operation }}" style="font-family:'DM Mono',monospace;font-size:0.75rem;font-weight:600">{{ a.operation }}</span></td>
+              <td class="mono">{{ a.record_id }}</td>
+              <td class="mono" style="color:var(--ink2)">{{ a.changed_field or '—' }}</td>
+              <td class="mono" style="color:var(--red);font-size:0.75rem">{{ a.old_value or '—' }}</td>
+              <td class="mono" style="color:#6fcf97;font-size:0.75rem">{{ a.new_value or '—' }}</td>
+              <td style="font-size:0.75rem;color:var(--ink2)">{{ a.note or '—' }}</td>
+              <td class="mono" style="font-size:0.72rem;color:var(--ink2)">{{ a.changed_at }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state">
+            No audit logs yet. Run some operations (approve producer, change price, place order) to see logs here.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+async function refreshAudit() {
+  try {
+    const r = await fetch('/analytics/audit-log');
+    const logs = await r.json();
+    if (!r.ok) return;
+
+    let html = '<table><thead><tr><th>Log ID</th><th>Table</th><th>Operation</th><th>Record ID</th><th>Field</th><th>Old Value</th><th>New Value</th><th>Note</th><th>Time</th></tr></thead><tbody>';
+    logs.forEach(a => {
+      html += `<tr>
+        <td class="mono">#${a.log_id}</td>
+        <td class="mono" style="color:var(--accent)">${a.table_name}</td>
+        <td><span class="audit-op-${a.operation}" style="font-family:'DM Mono',monospace;font-size:0.75rem;font-weight:600">${a.operation}</span></td>
+        <td class="mono">${a.record_id}</td>
+        <td class="mono" style="color:var(--ink2)">${a.changed_field || '—'}</td>
+        <td class="mono" style="color:var(--red);font-size:0.75rem">${a.old_value || '—'}</td>
+        <td class="mono" style="color:#6fcf97;font-size:0.75rem">${a.new_value || '—'}</td>
+        <td style="font-size:0.75rem;color:var(--ink2)">${a.note || '—'}</td>
+        <td class="mono" style="font-size:0.72rem;color:var(--ink2)">${a.changed_at}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('auditTable').innerHTML = html;
+  } catch(e) {
+    console.error('Refresh failed:', e);
+  }
+}
+</script>
+</body>
+</html>

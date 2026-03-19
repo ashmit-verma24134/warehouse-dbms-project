@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ warehouse.warehouse_name }} — Producer Management</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0f1923;
+    --surface: #162030;
+    --surface2: #1c2a3a;
+    --border: #1e3148;
+    --ink: #e8f0f8;
+    --ink2: #7a9ab8;
+    --accent: #2d9cdb;
+    --accent-light: rgba(45,156,219,0.1);
+    --gold: #f2c94c;
+    --gold-light: rgba(242,201,76,0.08);
+    --green: #27ae60;
+    --green-light: rgba(39,174,96,0.1);
+    --red: #eb5757;
+    --red-light: rgba(235,87,87,0.1);
+    --orange: #f2994a;
+    --orange-light: rgba(242,153,74,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Outfit', sans-serif; min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(45,156,219,0.05) 0%, transparent 50%),
+      radial-gradient(circle at 85% 85%, rgba(242,201,76,0.04) 0%, transparent 50%);
+  }
+
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 48px; display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 50;
+  }
+  .header-brand { font-family: 'DM Serif Display', serif; font-size: 1.2rem; }
+  .header-brand span { color: var(--accent); font-style: italic; }
+  .header-nav { display: flex; gap: 8px; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 8px; font-size: 0.82rem;
+    color: var(--ink2); text-decoration: none; transition: all .2s;
+  }
+  .nav-link:hover { background: var(--surface2); color: var(--ink); }
+  .nav-link.active { background: var(--accent-light); color: var(--accent); }
+
+  .page { max-width: 1280px; margin: 0 auto; padding: 36px 48px 80px; }
+
+  .hero {
+    margin-bottom: 32px; padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px;
+  }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-sub { color: var(--ink2); font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .stat-icon { font-size: 1.6rem; }
+  .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink2); margin-bottom: 3px; }
+  .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.5rem; }
+  .blue{color:var(--accent);} .gold{color:var(--gold);} .green{color:var(--green);} .red{color:var(--red);}
+
+  /* FLASH */
+  .flash-list { list-style: none; margin-bottom: 20px; }
+  .flash-list li { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 6px; border-left: 3px solid; }
+  .flash-success { background: var(--green-light); color: #6fcf97; border-color: var(--green); }
+  .flash-danger  { background: var(--red-light); color: #eb5757; border-color: var(--red); }
+  .flash-warning { background: var(--gold-light); color: var(--gold); border-color: var(--gold); }
+
+  /* FILTER TABS */
+  .filter-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+  .ftab {
+    padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink2); font-size: 0.8rem;
+    cursor: pointer; transition: all .2s; font-family: 'Outfit', sans-serif;
+  }
+  .ftab:hover { background: var(--surface2); color: var(--ink); }
+  .ftab.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+
+  /* TABLE */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .card-header {
+    padding: 16px 22px 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.1rem; }
+  .badge {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    padding: 3px 10px; border-radius: 20px; font-weight: 500;
+  }
+  .badge-blue   { background: var(--accent-light); color: var(--accent); }
+  .badge-gray   { background: rgba(122,154,184,0.1); color: var(--ink2); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  thead th {
+    text-align: left; padding: 10px 16px;
+    background: var(--surface2); color: var(--ink2);
+    font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 600; border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+
+  /* STATUS PILLS */
+  .pill {
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 0.7rem; font-weight: 600;
+    font-family: 'DM Mono', monospace; letter-spacing: 0.02em;
+  }
+  .pill-approved { background: var(--green-light); color: #6fcf97; }
+  .pill-pending  { background: var(--gold-light); color: var(--gold); }
+  .pill-rejected { background: var(--red-light); color: var(--red); }
+
+  /* ACTION BUTTONS */
+  .btn-approve {
+    background: var(--green-light); color: #6fcf97;
+    border: 1px solid rgba(39,174,96,0.3); border-radius: 8px;
+    padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .2s;
+  }
+  .btn-approve:hover { background: var(--green); color: #fff; }
+
+  .btn-reject {
+    background: var(--red-light); color: var(--red);
+    border: 1px solid rgba(235,87,87,0.3); border-radius: 8px;
+    padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .2s;
+    margin-left: 6px;
+  }
+  .btn-reject:hover { background: var(--red); color: #fff; }
+
+  .btn-pending {
+    background: var(--gold-light); color: var(--gold);
+    border: 1px solid rgba(242,201,76,0.3); border-radius: 8px;
+    padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .2s;
+    margin-left: 6px;
+  }
+  .btn-pending:hover { background: var(--gold); color: #000; }
+
+  .producer-name { font-weight: 600; font-size: 0.9rem; }
+  .producer-contact { font-size: 0.75rem; color: var(--ink2); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+  .earnings-val { color: var(--gold); font-weight: 600; }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--ink2); font-size: 0.85rem; }
+
+  @media(max-width:900px){
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .page { padding: 20px 16px 60px; }
+    .header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">WMS <span>Admin</span> Portal</div>
+  <div class="header-nav">
+    <a href="/warehouse/{{ warehouse.warehouse_id }}" class="nav-link">📦 Dashboard</a>
+    <a href="/warehouse/{{ warehouse.warehouse_id }}/producers" class="nav-link active">🏭 Producers</a>
+  </div>
+</header>
+
+<div class="page">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-list">
+        {% for category, message in messages %}
+          <li class="flash-{{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <div class="hero">
+    <div>
+      <h1>Producer <em>Management</em></h1>
+      <div class="hero-sub">Approve, reject and monitor all producers</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">🏭</div>
+      <div>
+        <div class="stat-label">Total Producers</div>
+        <div class="stat-value blue">{{ producers|length }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div>
+        <div class="stat-label">Approved</div>
+        <div class="stat-value green">{{ producers|selectattr('approval_status','equalto','Approved')|list|length }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⏳</div>
+      <div>
+        <div class="stat-label">Pending</div>
+        <div class="stat-value gold">{{ producers|selectattr('approval_status','equalto','Pending')|list|length }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">❌</div>
+      <div>
+        <div class="stat-label">Rejected</div>
+        <div class="stat-value red">{{ producers|selectattr('approval_status','equalto','Rejected')|list|length }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER TABS -->
+  <div class="filter-tabs">
+    <button class="ftab active" onclick="filterTable('ALL', this)">All Producers</button>
+    <button class="ftab" onclick="filterTable('Approved', this)">✅ Approved</button>
+    <button class="ftab" onclick="filterTable('Pending', this)">⏳ Pending</button>
+    <button class="ftab" onclick="filterTable('Rejected', this)">❌ Rejected</button>
+  </div>
+
+  <!-- PRODUCERS TABLE -->
+  <div class="card">
+    <div class="card-header">
+      <h2>All Producers</h2>
+      <span class="badge badge-blue">{{ producers|length }} registered</span>
+    </div>
+    <div class="table-wrap">
+      {% if producers %}
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Producer</th>
+            <th>Products</th>
+            <th>Total Batches</th>
+            <th>Earnings</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in producers %}
+          <tr data-status="{{ p.approval_status }}">
+            <td class="mono">#{{ p.producer_id }}</td>
+            <td>
+              <div class="producer-name">{{ p.producer_name }}</div>
+              <div class="producer-contact">{{ p.email }} · {{ p.phone }}</div>
+            </td>
+            <td class="mono">{{ p.product_count }}</td>
+            <td class="mono">{{ p.batch_count }}</td>
+            <td class="mono earnings-val">₹{{ "%.2f"|format(p.earnings or 0) }}</td>
+            <td>
+              <span class="pill pill-{{ p.approval_status|lower }}">{{ p.approval_status }}</span>
+            </td>
+            <td>
+              {% if p.approval_status != 'Approved' %}
+              <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
+                <input type="hidden" name="new_status" value="Approved"/>
+                <button type="submit" class="btn-approve">✓ Approve</button>
+              </form>
+              {% endif %}
+              {% if p.approval_status != 'Rejected' %}
+              <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
+                <input type="hidden" name="new_status" value="Rejected"/>
+                <button type="submit" class="btn-reject">✕ Reject</button>
+              </form>
+              {% endif %}
+              {% if p.approval_status != 'Pending' %}
+              <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
+                <input type="hidden" name="new_status" value="Pending"/>
+                <button type="submit" class="btn-pending">⟳ Reset</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <div class="empty-state">No producers found.</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+function filterTable(status, btn) {
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('tbody tr').forEach(row => {
+    row.style.display = (status === 'ALL' || row.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

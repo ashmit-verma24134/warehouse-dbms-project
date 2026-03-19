@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KiranaMart — {{ customer.first_name }}'s Orders</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --saffron: #FF6B00;
+  --saffron-light: #FF8C38;
+  --green: #2E7D32;
+  --green-light: #43A047;
+  --cream: #FFFBF5;
+  --text: #1C1C1C;
+  --muted: #777;
+  --border: #F0E6DA;
+  --radius: 16px;
+  --shadow: 0 2px 16px rgba(255,107,0,0.08);
+  --red: #C62828;
+  --red-light: #FFEBEE;
+  --blue: #1565C0;
+  --purple: #6A1B9A;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+
+.nav{
+  background:linear-gradient(135deg,#FF6B00,#E65100);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;height:62px;position:sticky;top:0;z-index:100;
+  box-shadow:0 4px 20px rgba(255,107,0,0.3);
+}
+.logo{font-family:'Baloo 2',cursive;font-size:1.55rem;font-weight:800;color:#fff;letter-spacing:-0.5px;}
+.logo em{color:#FFE0B2;font-style:normal;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-btn{
+  background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.35);
+  color:#fff;border-radius:40px;padding:7px 18px;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:0.88rem;
+  cursor:pointer;text-decoration:none;transition:background .2s;
+}
+.nav-btn:hover{background:rgba(255,255,255,0.3);}
+.nav-btn.white{background:#fff;color:var(--saffron);box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+.nav-btn.white:hover{background:#FFF3E0;}
+
+.hero{
+  background:linear-gradient(160deg,#FFF8F0 0%,#FFFBF5 100%);
+  padding:32px 32px 24px;border-bottom:2px solid var(--border);
+}
+.hero h1{
+  font-family:'Baloo 2',cursive;font-size:2rem;font-weight:800;
+  color:var(--saffron);line-height:1;
+}
+
+.stats{display:flex;gap:14px;padding:20px 32px 4px;flex-wrap:wrap;}
+.stat{
+  background:#fff;border-radius:14px;padding:16px 22px;
+  border:2px solid var(--border);display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow);min-width:140px;
+}
+.stat-emoji{font-size:1.7rem;}
+.stat-val{font-family:'Baloo 2',cursive;font-size:1.5rem;font-weight:800;color:var(--saffron);}
+.stat-lbl{font-size:0.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;}
+
+.main{padding:16px 32px 80px;max-width:1100px;margin:0 auto;}
+
+.order-card{
+  background:#fff;border-radius:var(--radius);border:2px solid var(--border);
+  box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;
+  transition:box-shadow .2s,border-color .2s;
+}
+.order-card:hover{box-shadow:0 6px 24px rgba(255,107,0,0.1);border-color:#F5C9A8;}
+.order-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,#FFFBF5,#FFF3E0);
+  flex-wrap:wrap;gap:10px;
+}
+.order-id{font-family:'Baloo 2',cursive;font-size:1.05rem;font-weight:800;color:var(--saffron);}
+.order-date{font-size:0.76rem;color:var(--muted);margin-top:2px;}
+.order-head-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.order-total{font-weight:800;font-size:0.95rem;color:var(--text);}
+
+.pill{border-radius:40px;padding:4px 13px;font-size:0.73rem;font-weight:800;letter-spacing:0.03em;white-space:nowrap;}
+.pill-CONFIRMED  {background:#E8F5E9;color:var(--green);}
+.pill-DISPATCHED {background:#E3F2FD;color:var(--blue);}
+.pill-DELIVERED  {background:#F3E5F5;color:var(--purple);}
+.pill-FAILED     {background:var(--red-light);color:var(--red);}
+.pill-CREATED    {background:#FFF3E0;color:#E65100;}
+
+.order-items{padding:10px 20px;}
+.item-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
+.item-row:last-child{border-bottom:none;}
+.item-emoji{font-size:1.4rem;}
+.item-name{font-weight:700;font-size:0.86rem;flex:1;}
+.item-meta{font-size:0.78rem;color:var(--muted);}
+.item-total{font-weight:800;font-size:0.88rem;color:var(--saffron);}
+
+.order-foot{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;background:#FAFAFA;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px;
+}
+.foot-info{font-size:0.78rem;color:var(--muted);}
+.foot-total{font-size:0.88rem;font-weight:800;color:var(--text);}
+.foot-total span{color:var(--saffron);}
+
+.cancel-wrap{display:flex;align-items:center;gap:7px;}
+.btn-cancel{
+  padding:6px 14px;border-radius:40px;border:2px solid #FFCDD2;
+  background:var(--red-light);color:var(--red);
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:0.76rem;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.btn-cancel:hover{background:var(--red);color:#fff;border-color:var(--red);}
+.countdown-ring{width:30px;height:30px;flex-shrink:0;}
+.countdown-ring circle{fill:none;stroke-width:3;}
+.countdown-ring .bg{stroke:#F0E6DA;}
+.countdown-ring .fg{stroke:var(--red);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;}
+.countdown-num{font-family:'Baloo 2',cursive;font-weight:800;font-size:0.8rem;color:var(--red);min-width:13px;text-align:center;}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty span{font-size:3.5rem;display:block;margin-bottom:14px;}
+.empty h2{font-family:'Baloo 2',cursive;font-size:1.4rem;color:var(--saffron);margin-bottom:8px;}
+.empty p{font-size:0.88rem;margin-bottom:20px;}
+.empty a{display:inline-block;padding:10px 24px;border-radius:40px;background:var(--saffron);color:#fff;text-decoration:none;font-weight:800;font-size:0.9rem;}
+.empty a:hover{background:#E65100;}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:#1C1C1C;color:#fff;padding:11px 24px;border-radius:40px;font-weight:700;font-size:0.88rem;z-index:500;transition:transform .35s;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.ok{background:var(--green);}
+.toast.err{background:var(--red);}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.48);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+.modal-bg.show{opacity:1;pointer-events:all;}
+.modal{background:#fff;border-radius:24px;padding:28px;width:360px;max-width:92vw;transform:scale(.9);transition:transform .3s;box-shadow:0 20px 60px rgba(0,0,0,0.18);}
+.modal-bg.show .modal{transform:scale(1);}
+.modal h3{font-family:'Baloo 2',cursive;font-size:1.2rem;font-weight:800;color:var(--red);margin-bottom:8px;}
+.modal p{font-size:0.88rem;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.modal-acts{display:flex;gap:10px;}
+.m-no{flex:1;padding:12px;border-radius:40px;border:2px solid var(--border);background:#fff;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;}
+.m-yes{flex:2;padding:12px;border-radius:40px;border:none;background:var(--red);color:#fff;font-family:'Nunito',sans-serif;font-weight:800;cursor:pointer;}
+.m-yes:hover{background:#B71C1C;}
+
+@media(max-width:600px){.main,.stats,.hero{padding-left:16px;padding-right:16px;}.stats{gap:10px;}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo">Kirana<em>Mart</em> 🛒</div>
+  <div class="nav-right">
+    <a href="/customer/{{ customer.customer_id }}" class="nav-btn white">🛍️ Shop</a>
+    <span class="nav-btn" style="cursor:default;">💰 ₹{{ "%.2f"|format(wallet_balance) }}</span>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>📦 Order History</h1>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <span class="stat-emoji">🛒</span>
+    <div><div class="stat-val">{{ orders|length }}</div><div class="stat-lbl">Total</div></div>
+  </div>
+  <div class="stat">
+    <span class="stat-emoji">✅</span>
+    <div><div class="stat-val">{{ orders|selectattr('order_status','equalto','CONFIRMED')|list|length }}</div><div class="stat-lbl">Confirmed</div></div>
+  </div>
+  <div class="stat">
+    <span class="stat-emoji">🚚</span>
+    <div><div class="stat-val">{{ orders|selectattr('order_status','equalto','DISPATCHED')|list|length }}</div><div class="stat-lbl">Dispatched</div></div>
+  </div>
+  <div class="stat">
+    <span class="stat-emoji">📦</span>
+    <div><div class="stat-val">{{ orders|selectattr('order_status','equalto','DELIVERED')|list|length }}</div><div class="stat-lbl">Delivered</div></div>
+  </div>
+  <div class="stat">
+    <span class="stat-emoji">💰</span>
+    <div><div class="stat-val">₹{{ "%.0f"|format(total_spent) }}</div><div class="stat-lbl">Spent</div></div>
+  </div>
+</div>
+
+<main class="main">
+  {% set EMOJI = {
+    'Amul Milk':'🥛','Amul Butter':'🧈','Amul Chocolate':'🍫',
+    'Britannia Good Day Biscuits':'🍪','Britannia Cake Roll':'🎂','Britannia Marie Gold':'🍘',
+    'Haldirams Bhujia':'🥜','Haldirams Soan Papdi':'🍬','Haldirams Kaju Katli':'🍮',
+    'Parle G Biscuits':'🍪','Parle Hide & Seek':'🍫','Parle Melody Toffee':'🍭',
+    'Sunfeast Dark Fantasy':'🍫','Aashirvaad Atta':'🌾','Bingo Mad Angles':'🥨'
+  } %}
+
+  {% if orders %}
+    {% for order in orders %}
+    <div class="order-card" id="order-{{ order.order_id }}">
+      <div class="order-head">
+        <div>
+          <div class="order-id">Order #{{ order.order_id }}</div>
+          <div class="order-date">📅 {{ order.created_at }} · {{ order.warehouse_name }}</div>
+        </div>
+        <div class="order-head-right">
+          <span class="pill pill-{{ order.order_status }}" id="pill-{{ order.order_id }}">{{ order.order_status }}</span>
+          <span class="order-total">₹{{ "%.2f"|format(order.total_amount) }}</span>
+          {% if order.order_status == 'CONFIRMED' and order.cancel_seconds_left > 0 %}
+          <div class="cancel-wrap" id="cancel-wrap-{{ order.order_id }}">
+            <button class="btn-cancel" onclick="confirmCancel({{ order.order_id }}, {{ order.total_amount }})">✕ Cancel</button>
+            <svg class="countdown-ring" viewBox="0 0 32 32">
+              <circle class="bg" cx="16" cy="16" r="13"/>
+              <circle class="fg" id="ring-{{ order.order_id }}" cx="16" cy="16" r="13" stroke-dasharray="81.68" stroke-dashoffset="0"/>
+            </svg>
+            <span class="countdown-num" id="cnum-{{ order.order_id }}">{{ order.cancel_seconds_left }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="order-items">
+        {% if order['items'] %}
+          {% for item in order['items'] %}
+          <div class="item-row">
+            <span class="item-emoji">{{ EMOJI.get(item.product_name, '🛒') }}</span>
+            <span class="item-name">{{ item.product_name }}</span>
+            <span class="item-meta">{{ item.quantity }} × ₹{{ "%.2f"|format(item.unit_price) }}</span>
+            <span class="item-total">₹{{ "%.2f"|format(item.quantity * item.unit_price * 120 / 100) }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="color:var(--muted);font-size:0.85rem;padding:8px 0;">No items found</div>
+        {% endif %}
+      </div>
+      <div class="order-foot">
+        <div class="foot-info">{{ order['items']|length if order['items'] else 0 }} item type(s) · {{ order.total_items }} total units</div>
+        <div class="foot-total">Total paid: <span>₹{{ "%.2f"|format(order.total_amount) }}</span></div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <span>📭</span>
+      <h2>No orders yet!</h2>
+      <p>Start shopping and your orders will appear here.</p>
+      <a href="/customer/{{ customer.customer_id }}">🛍️ Shop Now</a>
+    </div>
+  {% endif %}
+</main>
+
+<div class="modal-bg" id="cancelModal">
+  <div class="modal">
+    <h3>❌ Cancel Order?</h3>
+    <p id="cancelMsg">Cancel this order? The amount will be refunded to your wallet.</p>
+    <div class="modal-acts">
+      <button class="m-no" onclick="closeModal()">Keep Order</button>
+      <button class="m-yes" id="confirmCancelBtn">Yes, Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CID = {{ customer.customer_id }};
+let pendingOrderId = null;
+const CIRCUMFERENCE = 81.68;
+
+// Track active intervals so we can stop them on cancel
+const activeIntervals = {};
+
+const timers = {};
+{% for order in orders %}
+{% if order.order_status == 'CONFIRMED' and order.cancel_seconds_left > 0 %}
+timers[{{ order.order_id }}] = {{ order.cancel_seconds_left }};
+{% endif %}
+{% endfor %}
+
+function startCountdowns() {
+  Object.keys(timers).forEach(id => runTimer(parseInt(id), timers[id]));
+}
+
+function runTimer(orderId, secondsLeft) {
+  const ring = document.getElementById('ring-' + orderId);
+  const cnum = document.getElementById('cnum-' + orderId);
+  const wrap = document.getElementById('cancel-wrap-' + orderId);
+  const pill = document.getElementById('pill-' + orderId);
+  if (!ring || !cnum || !wrap) return;
+
+  let s = secondsLeft;
+  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - s / 10);
+  cnum.textContent = s;
+
+  const interval = setInterval(() => {
+    s--;
+    if (s <= 0) {
+      clearInterval(interval);
+      delete activeIntervals[orderId];
+      wrap.style.display = 'none';
+      if (pill) { pill.textContent = 'DISPATCHED'; pill.className = 'pill pill-DISPATCHED'; }
+      return;
+    }
+    ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - s / 10);
+    cnum.textContent = s;
+  }, 1000);
+
+  // Store interval so cancel can stop it
+  activeIntervals[orderId] = interval;
+}
+
+startCountdowns();
+
+function confirmCancel(orderId, total) {
+  pendingOrderId = orderId;
+  document.getElementById('cancelMsg').textContent =
+    `Cancel Order #${orderId}? ₹${total.toFixed(2)} will be refunded to your wallet.`;
+  document.getElementById('cancelModal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('cancelModal').classList.remove('show');
+  pendingOrderId = null;
+}
+document.getElementById('cancelModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+document.getElementById('confirmCancelBtn').addEventListener('click', async () => {
+  if (!pendingOrderId) return;
+  const oid = pendingOrderId;
+  closeModal();
+  try {
+    const r = await fetch(`/customer/${CID}/cancel-order/${oid}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }
+    });
+    const d = await r.json();
+    if (r.ok) {
+      // ── Stop the countdown timer immediately ──
+      if (activeIntervals[oid]) {
+        clearInterval(activeIntervals[oid]);
+        delete activeIntervals[oid];
+      }
+      // ── Update UI immediately: hide timer, show CANCELLED pill ──
+      const wrap = document.getElementById('cancel-wrap-' + oid);
+      const pill = document.getElementById('pill-' + oid);
+      if (wrap) wrap.style.display = 'none';
+      if (pill) { pill.textContent = 'CANCELLED'; pill.className = 'pill pill-FAILED'; }
+
+      toast(d.message || 'Order cancelled', 'ok');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      toast('❌ ' + (d.error || 'Cancel failed'), 'err');
+    }
+  } catch { toast('❌ Network error', 'err'); }
+});
+
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
