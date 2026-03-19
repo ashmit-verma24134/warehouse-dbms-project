@@ -55,80 +55,47 @@
     border-bottom: 1px solid var(--border);
     display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;
   }
-  .hero h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px;
-  }
+  .hero h1 { font-family: 'DM Serif Display', serif; font-size: 2rem; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px; }
   .hero h1 em { font-style: italic; color: var(--accent); }
   .hero-sub { color: var(--ink2); font-family: 'DM Mono', monospace; font-size: 0.8rem; }
 
-  /* STATS */
   .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 18px 20px;
-    display: flex; align-items: center; gap: 14px;
-  }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; }
   .stat-icon { font-size: 1.6rem; }
   .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink2); margin-bottom: 3px; }
   .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.5rem; }
   .blue{color:var(--accent);} .gold{color:var(--gold);} .green{color:var(--green);} .red{color:var(--red);}
 
-  /* FLASH */
   .flash-list { list-style: none; margin-bottom: 20px; }
   .flash-list li { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 6px; border-left: 3px solid; }
   .flash-success { background: var(--green-light); color: #6fcf97; border-color: var(--green); }
   .flash-danger  { background: var(--red-light); color: #eb5757; border-color: var(--red); }
   .flash-warning { background: var(--gold-light); color: var(--gold); border-color: var(--gold); }
 
-  /* FILTER TABS */
   .filter-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
-  .ftab {
-    padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--ink2); font-size: 0.8rem;
-    cursor: pointer; transition: all .2s; font-family: 'Outfit', sans-serif;
-  }
+  .ftab { padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--ink2); font-size: 0.8rem; cursor: pointer; transition: all .2s; font-family: 'Outfit', sans-serif; }
   .ftab:hover { background: var(--surface2); color: var(--ink); }
   .ftab.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
 
-  /* TABLE */
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-  .card-header {
-    padding: 16px 22px 12px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
+  .card-header { padding: 16px 22px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .card-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.1rem; }
-  .badge {
-    font-family: 'DM Mono', monospace; font-size: 0.68rem;
-    padding: 3px 10px; border-radius: 20px; font-weight: 500;
-  }
-  .badge-blue   { background: var(--accent-light); color: var(--accent); }
-  .badge-gray   { background: rgba(122,154,184,0.1); color: var(--ink2); }
+  .badge { font-family: 'DM Mono', monospace; font-size: 0.68rem; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+  .badge-blue { background: var(--accent-light); color: var(--accent); }
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-  thead th {
-    text-align: left; padding: 10px 16px;
-    background: var(--surface2); color: var(--ink2);
-    font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
-    font-weight: 600; border-bottom: 1px solid var(--border);
-  }
+  thead th { text-align: left; padding: 10px 16px; background: var(--surface2); color: var(--ink2); font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; border-bottom: 1px solid var(--border); }
   tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: var(--surface2); }
   .mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; }
 
-  /* STATUS PILLS */
-  .pill {
-    border-radius: 20px; padding: 4px 12px;
-    font-size: 0.7rem; font-weight: 600;
-    font-family: 'DM Mono', monospace; letter-spacing: 0.02em;
-  }
+  .pill { border-radius: 20px; padding: 4px 12px; font-size: 0.7rem; font-weight: 600; font-family: 'DM Mono', monospace; }
   .pill-approved { background: var(--green-light); color: #6fcf97; }
-  .pill-pending  { background: var(--gold-light); color: var(--gold); }
-  .pill-rejected { background: var(--red-light); color: var(--red); }
+  .pill-pending  { background: var(--gold-light);  color: var(--gold); }
+  .pill-rejected { background: var(--red-light);   color: var(--red); }
 
-  /* ACTION BUTTONS */
   .btn-approve {
     background: var(--green-light); color: #6fcf97;
     border: 1px solid rgba(39,174,96,0.3); border-radius: 8px;
@@ -142,24 +109,12 @@
     border: 1px solid rgba(235,87,87,0.3); border-radius: 8px;
     padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
     cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .2s;
-    margin-left: 6px;
   }
   .btn-reject:hover { background: var(--red); color: #fff; }
 
-  .btn-pending {
-    background: var(--gold-light); color: var(--gold);
-    border: 1px solid rgba(242,201,76,0.3); border-radius: 8px;
-    padding: 6px 12px; font-size: 0.75rem; font-weight: 600;
-    cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .2s;
-    margin-left: 6px;
-  }
-  .btn-pending:hover { background: var(--gold); color: #000; }
-
   .producer-name { font-weight: 600; font-size: 0.9rem; }
   .producer-contact { font-size: 0.75rem; color: var(--ink2); margin-top: 2px; font-family: 'DM Mono', monospace; }
-
   .earnings-val { color: var(--gold); font-weight: 600; }
-
   .empty-state { text-align: center; padding: 40px; color: var(--ink2); font-size: 0.85rem; }
 
   @media(max-width:900px){
@@ -215,9 +170,9 @@
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon">⏳</div>
+      <div class="stat-icon"></div>
       <div>
-        <div class="stat-label">Pending</div>
+        <div class="stat-label"></div>
         <div class="stat-value gold">{{ producers|selectattr('approval_status','equalto','Pending')|list|length }}</div>
       </div>
     </div>
@@ -234,7 +189,6 @@
   <div class="filter-tabs">
     <button class="ftab active" onclick="filterTable('ALL', this)">All Producers</button>
     <button class="ftab" onclick="filterTable('Approved', this)">✅ Approved</button>
-    <button class="ftab" onclick="filterTable('Pending', this)">⏳ Pending</button>
     <button class="ftab" onclick="filterTable('Rejected', this)">❌ Rejected</button>
   </div>
 
@@ -274,22 +228,16 @@
             </td>
             <td>
               {% if p.approval_status != 'Approved' %}
-              <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
-                <input type="hidden" name="new_status" value="Approved"/>
-                <button type="submit" class="btn-approve">✓ Approve</button>
-              </form>
+                <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
+                  <input type="hidden" name="new_status" value="Approved"/>
+                  <button type="submit" class="btn-approve">✓ Approve</button>
+                </form>
               {% endif %}
-              {% if p.approval_status != 'Rejected' %}
-              <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
-                <input type="hidden" name="new_status" value="Rejected"/>
-                <button type="submit" class="btn-reject">✕ Reject</button>
-              </form>
-              {% endif %}
-              {% if p.approval_status != 'Pending' %}
-              <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
-                <input type="hidden" name="new_status" value="Pending"/>
-                <button type="submit" class="btn-pending">⟳ Reset</button>
-              </form>
+              {% if p.approval_status == 'Approved' %}
+                <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-producer/{{ p.producer_id }}" style="display:inline">
+                  <input type="hidden" name="new_status" value="Rejected"/>
+                  <button type="submit" class="btn-reject">✕ Reject</button>
+                </form>
               {% endif %}
             </td>
           </tr>

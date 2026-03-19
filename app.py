@@ -8,9 +8,6 @@ app = Flask(__name__)
 app.secret_key = "super_secret_key_for_session"
 
 
-# ─────────────────────────────────────────────
-# DB CONNECTIONS
-# ─────────────────────────────────────────────
 def get_db_connection():
     return mysql.connector.connect(
         host="localhost", user="root",
@@ -24,9 +21,6 @@ def get_auth_connection():
     )
 
 
-# =========================================================
-# BASIC / HEALTH ROUTES
-# =========================================================
 @app.route("/")
 def home():
     return redirect(url_for("login_page"))
@@ -42,9 +36,6 @@ def health():
         return "DB not connected", 500
 
 
-# =========================================================
-# AUTH PAGES
-# =========================================================
 @app.route("/login")
 def login_page():
     return render_template("auth/login.html")
@@ -54,9 +45,6 @@ def signup_page():
     return render_template("auth/signup.html")
 
 
-# =========================================================
-# AUTH API ROUTES
-# =========================================================
 @app.route("/signup", methods=["POST"])
 def signup():
     auth_conn = None
@@ -76,7 +64,6 @@ def signup():
         db_conn = get_db_connection()
         db_cur  = db_conn.cursor()
 
-        # ── PRODUCER ─────────────────────────────────────────────────
         if role_id == 1:
             company_name = data.get("company_name", "").strip()
             phone        = data.get("phone", "").strip()
@@ -96,7 +83,6 @@ def signup():
             linked_id = db_cur.lastrowid
             db_conn.commit()
 
-        # ── ADMIN ─────────────────────────────────────────────────────
         elif role_id == 2:
             db_cur.execute("SELECT warehouse_id FROM Warehouse WHERE warehouse_id = 1")
             wh = db_cur.fetchone()
@@ -104,7 +90,6 @@ def signup():
                 return {"error": "Main Warehouse (id=1) not found. Run data.sql first."}, 400
             linked_id = 1
 
-        # ── CUSTOMER ──────────────────────────────────────────────────
         elif role_id == 3:
             first_name = data.get("first_name", "").strip()
             last_name  = data.get("last_name", "").strip()
@@ -182,9 +167,6 @@ def login():
         if conn:   conn.close()
 
 
-# =========================================================
-# DASHBOARD REDIRECT TARGETS
-# =========================================================
 @app.route("/producer")
 def producer_redirect():
     return redirect(url_for("producer_dashboard", producer_id=1))
@@ -218,9 +200,6 @@ def link_account():
         if conn:   conn.close()
 
 
-# =========================================================
-# READ-ONLY DATA ROUTES
-# =========================================================
 @app.route("/producers")
 def get_producers():
     try:
@@ -269,9 +248,6 @@ def batches():
         return jsonify({"error": str(e)}), 500
 
 
-# =========================================================
-# TRANSACTION ROUTES
-# =========================================================
 @app.route("/place-order", methods=["POST"])
 def place_order():
     conn = None; cursor = None
@@ -348,9 +324,6 @@ def test_failure():
         if conn:   conn.close()
 
 
-# =========================================================
-# DEMO / ANALYTICS ROUTES
-# =========================================================
 @app.route("/demo/inventory")
 def demo_inventory():
     conn = None; cursor = None
@@ -437,9 +410,6 @@ def analytics_warehouse_summary():
         if conn:   conn.close()
 
 
-# =========================================================
-# WAREHOUSE / ADMIN ROUTES
-# =========================================================
 @app.route("/warehouse/<int:warehouse_id>")
 def warehouse_dashboard(warehouse_id):
     conn = None
@@ -593,18 +563,12 @@ def cancel_request(warehouse_id, request_id):
 
 @app.route("/warehouse/<int:warehouse_id>/deliver-order/<int:order_id>", methods=["POST"])
 def deliver_order(warehouse_id, order_id):
-    """
-    Mark order DELIVERED.
-    Credits warehouse budget with order total + reduces used_capacity.
-    Works for both CONFIRMED and DISPATCHED orders.
-    """
     conn = None
     try:
         conn = get_db_connection()
         conn.autocommit = False
         cursor = conn.cursor(dictionary=True)
         conn.start_transaction()
-
         cursor.execute("""
             SELECT total_amount FROM `Order`
             WHERE order_id = %s AND warehouse_id = %s
@@ -612,21 +576,16 @@ def deliver_order(warehouse_id, order_id):
             FOR UPDATE
         """, (order_id, warehouse_id))
         order_row = cursor.fetchone()
-
         if not order_row:
             conn.rollback()
             flash(f"Order #{order_id} could not be updated (not found or already delivered).", "warning")
             return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
-
         order_total = float(order_row["total_amount"])
-
         cursor.execute("""
             UPDATE `Order` SET order_status = 'DELIVERED'
             WHERE order_id = %s AND warehouse_id = %s
               AND order_status IN ('CONFIRMED', 'DISPATCHED')
         """, (order_id, warehouse_id))
-
-        # Credit warehouse budget + decrease used_capacity
         cursor.execute("""
             UPDATE Warehouse
             SET budget        = budget + %s,
@@ -636,10 +595,8 @@ def deliver_order(warehouse_id, order_id):
                 ))
             WHERE warehouse_id = %s
         """, (order_total, order_id, warehouse_id))
-
         conn.commit()
         flash(f"✓ Order #{order_id} marked as Delivered! ₹{order_total:,.2f} added to budget.", "success")
-
     except Exception as e:
         if conn:
             try: conn.rollback()
@@ -676,7 +633,6 @@ def add_budget(warehouse_id):
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
 
 
-# ── ADMIN: Producer Management Page ──────────────────────────
 @app.route("/warehouse/<int:warehouse_id>/producers")
 def admin_producers(warehouse_id):
     conn = None
@@ -717,47 +673,39 @@ def admin_producers(warehouse_id):
         if conn: conn.close()
 
 
-# ── ADMIN: Approve / Reject Producer ─────────────────────────
+# ── FIXED: direct SQL instead of broken stored proc ──
 @app.route("/warehouse/<int:warehouse_id>/approve-producer/<int:producer_id>", methods=["POST"])
 def approve_producer(warehouse_id, producer_id):
     conn = None
     try:
         new_status = request.form.get("new_status", "Approved")
-        admin_id   = 1
         conn   = get_db_connection()
         cursor = conn.cursor()
-        cursor.callproc("sp_approve_producer", [producer_id, new_status, admin_id, ""])
+        cursor.execute(
+            "UPDATE Producer SET approval_status = %s WHERE producer_id = %s",
+            (new_status, producer_id)
+        )
         conn.commit()
-        cursor.execute("SELECT @_sp_approve_producer_3 AS error_msg")
-        row      = cursor.fetchone()
-        sp_error = row[0] if row else None
-        if sp_error:
-            flash(f"Error: {sp_error}", "danger")
-        else:
-            flash(f"✓ Producer #{producer_id} status updated to {new_status}.", "success")
+        flash(f"✓ Producer #{producer_id} status updated to {new_status}.", "success")
     except Exception as e:
         if conn: conn.rollback()
-        match = re.search(r"'(.+?)'", str(e))
-        flash(f"Error: {match.group(1) if match else str(e)}", "danger")
+        flash(f"Error: {str(e)}", "danger")
     finally:
         if conn: conn.close()
     return redirect(url_for("admin_producers", warehouse_id=warehouse_id))
 
 
-# ── ADMIN: Analytics Dashboard ────────────────────────────────
 @app.route("/warehouse/<int:warehouse_id>/analytics")
 def analytics_dashboard(warehouse_id):
     conn = None
     try:
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
         cursor.execute("SELECT * FROM Warehouse WHERE warehouse_id = %s", (warehouse_id,))
         warehouse = cursor.fetchone()
         if not warehouse:
             return f"<h2>Warehouse not found. <a href=/login>Back</a></h2>", 404
 
-        # WINDOW FUNCTION 1: RANK producers by earnings
         cursor.execute("""
             SELECT
                 producer_id, producer_name, earnings, approval_status,
@@ -773,7 +721,6 @@ def analytics_dashboard(warehouse_id):
             p['earnings']  = float(p['earnings'] or 0)
             p['pct_share'] = float(p['pct_share'] or 0)
 
-        # WINDOW FUNCTION 2: Running total of batch costs
         cursor.execute("""
             SELECT
                 b.batch_id, b.arrival_date, p.product_name,
@@ -793,7 +740,6 @@ def analytics_dashboard(warehouse_id):
             r['batch_value']        = float(r['batch_value'])
             r['running_total_cost'] = float(r['running_total_cost'])
 
-        # ROLLUP: Revenue by producer + product with subtotals
         cursor.execute("""
             SELECT
                 COALESCE(pr.producer_name, '── GRAND TOTAL ──') AS producer_name,
@@ -814,7 +760,6 @@ def analytics_dashboard(warehouse_id):
             r['is_subtotal']   = r['product_name'] in ('── Subtotal ──', '── GRAND TOTAL ──')
             r['is_grand']      = r['producer_name'] == '── GRAND TOTAL ──'
 
-        # FUNCTIONS DEMO
         cursor.execute("""
             SELECT
                 p.product_name,
@@ -834,7 +779,6 @@ def analytics_dashboard(warehouse_id):
             f['price_after_gst']  = float(f['price_after_gst'])
             f['producer_revenue'] = float(f['producer_revenue'])
 
-        # RECURSIVE QUERY: Category tree
         cursor.execute("""
             WITH RECURSIVE category_tree AS (
                 SELECT
@@ -846,9 +790,7 @@ def analytics_dashboard(warehouse_id):
                 FROM Product
                 WHERE category IS NOT NULL
                 GROUP BY category
-
                 UNION ALL
-
                 SELECT
                     p.product_name,
                     p.category,
@@ -864,7 +806,6 @@ def analytics_dashboard(warehouse_id):
         """)
         category_tree = cursor.fetchall()
 
-        # AUDIT LOG
         try:
             cursor.execute("""
                 SELECT log_id, table_name, operation, record_id,
@@ -915,9 +856,6 @@ def audit_log_api():
         if conn: conn.close()
 
 
-# =========================================================
-# PRODUCER ROUTES
-# =========================================================
 @app.route("/producer/<int:producer_id>")
 def producer_dashboard(producer_id):
     conn = None
@@ -1138,9 +1076,6 @@ def fulfill_request_v2(request_id):
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
 
 
-# =========================================================
-# CUSTOMER ROUTES
-# =========================================================
 @app.route("/customer/<int:customer_id>")
 def customer_dashboard(customer_id):
     conn = None
@@ -1347,7 +1282,6 @@ def add_funds_v2(customer_id):
         if conn: conn.close()
 
 
-# ── CUSTOMER: Order History ───────────────────────────────────
 @app.route("/customer/<int:customer_id>/orders")
 def customer_orders(customer_id):
     conn = None
@@ -1359,7 +1293,6 @@ def customer_orders(customer_id):
         if not customer:
             return f"<h2>Customer not found. <a href=/login>Back</a></h2>", 404
 
-        # Auto-dispatch CONFIRMED orders older than 10 seconds
         cursor.execute("""
             SELECT order_id FROM `Order`
             WHERE customer_id = %s AND order_status = 'CONFIRMED'
@@ -1417,7 +1350,6 @@ def customer_orders(customer_id):
         if conn: conn.close()
 
 
-# ── CUSTOMER: Cancel Order (direct SQL) ──────────────────────
 @app.route("/customer/<int:customer_id>/cancel-order/<int:order_id>", methods=["POST"])
 def cancel_order(customer_id, order_id):
     conn = None
@@ -1447,7 +1379,6 @@ def cancel_order(customer_id, order_id):
         order_total  = float(order["total_amount"])
         warehouse_id = order["warehouse_id"]
 
-        # Restore reserved inventory back to available
         cursor.execute("""
             UPDATE Inventory i
             JOIN Order_Item oi ON oi.product_id = i.product_id
@@ -1458,7 +1389,6 @@ def cancel_order(customer_id, order_id):
               AND i.reserved_qty >= oi.quantity
         """, (order_id, warehouse_id))
 
-        # Refund wallet if CONFIRMED
         refund = 0.0
         if status == "CONFIRMED":
             cursor.execute("""
@@ -1486,9 +1416,6 @@ def cancel_order(customer_id, order_id):
         if conn: conn.close()
 
 
-# =========================================================
-# ERROR HANDLERS
-# =========================================================
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Route not found"}), 404
