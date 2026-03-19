@@ -74,7 +74,7 @@ INSERT INTO Customer (first_name, last_name, email) VALUES
 INSERT IGNORE INTO Warehouse 
 (warehouse_id, warehouse_name, total_capacity, used_capacity, budget)
 VALUES
-(1, 'Main Warehouse', 50000, 0, 200000);
+(1, 'Main Warehouse', 10000, 0, 200000);
 
 
 INSERT INTO Admin (admin_name, warehouse_id)

@@ -1447,14 +1447,15 @@ def cancel_order(customer_id, order_id):
         order_total  = float(order["total_amount"])
         warehouse_id = order["warehouse_id"]
 
-        # Restore reserved inventory
+        # Restore reserved inventory back to available
         cursor.execute("""
             UPDATE Inventory i
             JOIN Order_Item oi ON oi.product_id = i.product_id
             SET i.available_qty = i.available_qty + oi.quantity,
-                i.reserved_qty  = i.reserved_qty  - oi.quantity
+                i.reserved_qty  = GREATEST(0, i.reserved_qty - oi.quantity)
             WHERE oi.order_id    = %s
               AND i.warehouse_id = %s
+              AND i.reserved_qty >= oi.quantity
         """, (order_id, warehouse_id))
 
         # Refund wallet if CONFIRMED

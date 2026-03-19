@@ -169,6 +169,43 @@
       <h1>Advanced <em>Analytics</em></h1>
       <div class="hero-sub">Window Functions · ROLLUP · Functions · Recursive Queries · Audit Log</div>
     </div>
+
+    <!-- WAREHOUSE CAPACITY DONUT -->
+    {% set used_pct = (warehouse.used_capacity / warehouse.total_capacity * 100) | round(1) %}
+    {% set free_pct = (100 - used_pct) | round(1) %}
+    {% set circumference = 163.36 %}
+    {% set used_dash = (used_pct / 100 * circumference) | round(2) %}
+    <div style="display:flex;align-items:center;gap:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 24px;">
+      <div style="position:relative;width:80px;height:80px;flex-shrink:0;">
+        <svg viewBox="0 0 60 60" width="80" height="80">
+          <!-- background ring -->
+          <circle cx="30" cy="30" r="26" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <!-- used capacity ring -->
+          <circle cx="30" cy="30" r="26" fill="none"
+            stroke="{% if used_pct > 80 %}var(--red){% elif used_pct > 60 %}var(--gold){% else %}var(--accent){% endif %}"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-dasharray="{{ used_dash }} {{ circumference }}"
+            stroke-dashoffset="0"
+            transform="rotate(-90 30 30)"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:700;color:var(--ink);">
+          {{ used_pct }}%
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--ink2);margin-bottom:6px;">Warehouse Capacity</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:{% if used_pct > 80 %}var(--red){% elif used_pct > 60 %}var(--gold){% else %}var(--accent){% endif %};display:inline-block;"></span>
+          <span style="font-family:'DM Mono',monospace;font-size:0.78rem;">Used: {{ warehouse.used_capacity }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block;"></span>
+          <span style="font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--ink2);">Free: {{ warehouse.total_capacity - warehouse.used_capacity }}</span>
+        </div>
+        <div style="font-size:0.7rem;color:var(--ink2);margin-top:6px;">Total: {{ warehouse.total_capacity }} units</div>
+      </div>
+    </div>
   </div>
 
   <!-- TABS -->
@@ -176,7 +213,7 @@
     <button class="tab active" onclick="showTab('window')">📊 Window Functions</button>
     <button class="tab" onclick="showTab('rollup')">📋 ROLLUP Report</button>
     <button class="tab" onclick="showTab('functions')">⚡ SQL Functions</button>
-    <button class="tab" onclick="showTab('recursive')">🌲 Recursive Query</button>
+    <!--<button class="tab" onclick="showTab('recursive')">🌲 Recursive Query</button> (commented)--> 
     <button class="tab" onclick="showTab('audit')">🔍 Audit Log</button>
   </div>
 
