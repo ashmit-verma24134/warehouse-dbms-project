@@ -1,5 +1,6 @@
 USE supplychain_db;
 
+-- Q1: All producers with their products and GST price
 SELECT
     pr.producer_id,
     pr.producer_name,
@@ -14,6 +15,7 @@ JOIN Product p           ON pp.product_id  = p.product_id
 ORDER BY pr.producer_name, p.product_name;
 
 
+-- Q2: Producer summary - products, batches, total earned
 SELECT
     pr.producer_name,
     pr.approval_status,
@@ -27,6 +29,7 @@ GROUP BY pr.producer_id, pr.producer_name, pr.approval_status
 ORDER BY total_earned DESC;
 
 
+-- Q3: Inventory stock status per product
 SELECT
     w.warehouse_name,
     p.product_name,
@@ -45,6 +48,7 @@ JOIN Product   p ON i.product_id   = p.product_id
 ORDER BY i.available_qty ASC;
 
 
+-- Q4: Customer order summary with wallet balance
 SELECT
     c.customer_id,
     CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
@@ -59,6 +63,7 @@ GROUP BY c.customer_id, c.first_name, c.last_name, w.balance
 ORDER BY total_spent DESC;
 
 
+-- Q5: Full order breakdown with item-level detail (5 table join)
 SELECT
     o.order_id,
     CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
@@ -78,6 +83,7 @@ JOIN Product    p  ON oi.product_id  = p.product_id
 ORDER BY o.order_id DESC, p.product_name;
 
 
+-- Q6: Restock requests showing price change since request was made
 SELECT
     rr.request_id,
     pr.producer_name,
@@ -97,6 +103,7 @@ JOIN Producer_Product pp ON pp.producer_id = rr.producer_id AND pp.product_id = 
 ORDER BY rr.created_at DESC;
 
 
+-- Q7: Producers who never shipped a batch (anti-join using LEFT JOIN + IS NULL)
 SELECT
     pr.producer_id,
     pr.producer_name,
@@ -109,6 +116,7 @@ WHERE b.batch_id IS NULL
 ORDER BY pr.producer_name;
 
 
+-- Q8: Low stock products using view
 SELECT
     v.warehouse_name,
     v.product_name,
@@ -119,6 +127,7 @@ FROM v_low_stock_products v
 ORDER BY units_needed_to_reorder DESC;
 
 
+-- Q9: Most expensive product per category (correlated subquery)
 SELECT
     p.category,
     p.product_name,
@@ -136,6 +145,7 @@ WHERE pp.price_before_tax = (
 ORDER BY p.category;
 
 
+-- Q10: Customers with more than 1 order (HAVING on aggregate)
 SELECT
     CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
     COUNT(o.order_id)                       AS order_count,
@@ -148,6 +158,7 @@ HAVING COUNT(o.order_id) > 1
 ORDER BY total_spent DESC;
 
 
+-- Q11: Batch cost running total (window function)
 SELECT
     b.batch_id,
     b.arrival_date,
@@ -167,6 +178,7 @@ WHERE b.warehouse_id = 1
 ORDER BY b.arrival_date, b.batch_id;
 
 
+-- Q12: Producer earnings ranking (RANK, DENSE_RANK, ROW_NUMBER)
 SELECT
     producer_name,
     earnings,
@@ -179,6 +191,7 @@ FROM Producer
 ORDER BY rank_position;
 
 
+-- Q13: Revenue by producer and product with subtotals (ROLLUP)
 SELECT
     COALESCE(pr.producer_name, '=== GRAND TOTAL ===') AS producer,
     COALESCE(p.product_name,   '--- Subtotal ---')    AS product,
@@ -192,6 +205,8 @@ HAVING total_revenue IS NOT NULL
 ORDER BY producer, product;
 
 
+-- TRIGGER DEMO 1: trg_before_batch_insert
+-- inserting a batch auto-updates inventory + deducts warehouse budget
 SELECT 'BEFORE' AS stage, p.product_name, i.available_qty, w.used_capacity, w.budget
 FROM Inventory i
 JOIN Product   p ON i.product_id   = p.product_id
@@ -208,6 +223,8 @@ JOIN Warehouse w ON i.warehouse_id = w.warehouse_id
 WHERE i.product_id = 1 AND i.warehouse_id = 1;
 
 
+-- TRIGGER DEMO 2: trg_after_order_confirm
+-- confirming an order auto-debits customer wallet
 SELECT 'BEFORE_CONFIRM' AS stage, balance FROM Wallet WHERE customer_id = 1;
 
 UPDATE `Order` SET order_status = 'CONFIRMED' WHERE order_id = 1 AND order_status = 'CREATED';
@@ -215,6 +232,8 @@ UPDATE `Order` SET order_status = 'CONFIRMED' WHERE order_id = 1 AND order_statu
 SELECT 'AFTER_CONFIRM' AS stage, balance FROM Wallet WHERE customer_id = 1;
 
 
+-- TRIGGER DEMO 3: trg_audit_price_change
+-- changing a price auto-logs it in Audit_Log
 SELECT 'BEFORE_PRICE' AS stage, price_before_tax FROM Producer_Product WHERE producer_id = 1 AND product_id = 1;
 
 UPDATE Producer_Product SET price_before_tax = 35.00 WHERE producer_id = 1 AND product_id = 1;
