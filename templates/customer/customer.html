@@ -293,7 +293,7 @@ body{font-family:'Nunito',sans-serif;background:var(--cream);color:var(--text);m
       {% endif %}
       <div class="qty-row">
         <button class="qbtn" onclick="dq({{ p.product_id }},-1)" {% if p.available_qty <= 0 %}disabled style="opacity:0.4;cursor:not-allowed"{% endif %}>−</button>
-        <span class="qval" id="q{{ p.product_id }}">1</span>
+        <span class="qval" id="q{{ p.product_id }}" data-max="{{ p.available_qty }}">1</span>
         <button class="qbtn" onclick="dq({{ p.product_id }},1)" {% if p.available_qty <= 0 %}disabled style="opacity:0.4;cursor:not-allowed"{% endif %}>+</button>
       </div>
       <button class="add-btn"
@@ -378,7 +378,8 @@ function saveCart() {
 
 function dq(id, d) {
   const el = document.getElementById('q' + id);
-  el.textContent = Math.max(1, Math.min(99, parseInt(el.textContent) + d));
+  const max = parseInt(el.dataset.max) || 99;
+  el.textContent = Math.max(1, Math.min(max, parseInt(el.textContent) + d));
 }
 
 function add(id, name, price) {
