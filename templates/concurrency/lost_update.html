@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Concurrency Lab — Lost Update Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #080e17;
+    --surface: #0e1b28;
+    --surface2: #162435;
+    --surface3: #1c2f42;
+    --border: #1a3050;
+    --ink: #d8eaf8;
+    --ink2: #6a90b0;
+    --ink3: #3d5a72;
+    --accent: #2d9cdb;
+    --accent-light: rgba(45,156,219,0.12);
+    --accent-glow: rgba(45,156,219,0.25);
+    --txn-a: #3b82f6;
+    --txn-a-light: rgba(59,130,246,0.12);
+    --txn-a-glow: rgba(59,130,246,0.3);
+    --txn-b: #ef4444;
+    --txn-b-light: rgba(239,68,68,0.12);
+    --txn-b-glow: rgba(239,68,68,0.3);
+    --green: #22c55e;
+    --green-light: rgba(34,197,94,0.12);
+    --gold: #f59e0b;
+    --gold-light: rgba(245,158,11,0.12);
+    --warn: #f97316;
+    --warn-light: rgba(249,115,22,0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Outfit', sans-serif; min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 10% 0%, rgba(45,156,219,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 90% 100%, rgba(239,68,68,0.05) 0%, transparent 60%);
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 48px; display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-brand {
+    font-family: 'DM Serif Display', serif; font-size: 1.15rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .header-brand .dot-a { width: 8px; height: 8px; border-radius: 50%; background: var(--txn-a); box-shadow: 0 0 8px var(--txn-a-glow); }
+  .header-brand .dot-b { width: 8px; height: 8px; border-radius: 50%; background: var(--txn-b); box-shadow: 0 0 8px var(--txn-b-glow); }
+  .brand-text { font-style: italic; color: var(--accent); }
+  .header-nav { display: flex; gap: 8px; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 8px; font-size: 0.82rem;
+    color: var(--ink2); text-decoration: none; transition: all .2s;
+  }
+  .nav-link:hover { background: var(--surface2); color: var(--ink); }
+  .nav-link.active { background: var(--accent-light); color: var(--accent); }
+
+  /* ── PAGE ── */
+  .page { max-width: 1320px; margin: 0 auto; padding: 36px 48px 80px; }
+
+  /* ── HERO ── */
+  .hero { margin-bottom: 36px; }
+  .hero-eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--txn-b);
+    letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--txn-b); }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif; font-size: 2.8rem;
+    letter-spacing: -0.02em; line-height: 1.05; margin-bottom: 12px;
+  }
+  .hero h1 em { font-style: italic; color: var(--txn-b); }
+  .hero-desc { color: var(--ink2); font-size: 0.95rem; max-width: 640px; line-height: 1.6; }
+
+  /* ── CONCEPT CARDS ── */
+  .concept-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 32px; }
+  .concept-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+    position: relative; overflow: hidden;
+  }
+  .concept-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .concept-card.a::before { background: linear-gradient(90deg, var(--txn-a), transparent); }
+  .concept-card.b::before { background: linear-gradient(90deg, var(--txn-b), transparent); }
+  .concept-card.result::before { background: linear-gradient(90deg, var(--gold), transparent); }
+  .concept-icon { font-size: 1.4rem; margin-bottom: 8px; }
+  .concept-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+  .concept-card.a .concept-label { color: var(--txn-a); }
+  .concept-card.b .concept-label { color: var(--txn-b); }
+  .concept-card.result .concept-label { color: var(--gold); }
+  .concept-desc { font-size: 0.8rem; color: var(--ink2); line-height: 1.5; }
+
+  /* ── MAIN GRID ── */
+  .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+
+  /* ── CONTROL PANEL ── */
+  .control-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 0; overflow: hidden;
+    position: sticky; top: 84px; height: fit-content;
+  }
+  .panel-header {
+    padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .panel-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.05rem; }
+  .panel-header p { font-size: 0.75rem; color: var(--ink2); margin-top: 3px; }
+  .panel-body { padding: 22px; }
+
+  /* price display */
+  .price-display {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .price-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink2); }
+  .price-value {
+    font-family: 'DM Mono', monospace; font-size: 1.8rem; font-weight: 500;
+    color: var(--gold); transition: all 0.4s;
+  }
+  .price-product { font-size: 0.75rem; color: var(--ink3); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+  /* form fields */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block; font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .field label.a-label { color: var(--txn-a); }
+  .field label.b-label { color: var(--txn-b); }
+  .field label.neutral { color: var(--ink2); }
+
+  .field input[type="number"], .field select {
+    width: 100%; padding: 10px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--ink); font-family: 'DM Mono', monospace;
+    font-size: 0.9rem; outline: none; transition: border-color .2s;
+    appearance: none;
+  }
+  .field input[type="number"]:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,156,219,0.1);
+  }
+  .field.a-field input:focus { border-color: var(--txn-a); box-shadow: 0 0 0 3px var(--txn-a-light); }
+  .field.b-field input:focus { border-color: var(--txn-b); box-shadow: 0 0 0 3px var(--txn-b-light); }
+
+  /* Safe Mode Toggle */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+    cursor: pointer; transition: border-color .2s;
+  }
+  .toggle-row:hover { border-color: var(--accent); }
+  .toggle-info { flex: 1; }
+  .toggle-title { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+  .toggle-sub { font-size: 0.72rem; color: var(--ink2); margin-top: 2px; }
+  .toggle-switch {
+    width: 44px; height: 24px; background: var(--surface3);
+    border-radius: 12px; position: relative; transition: background .3s;
+    flex-shrink: 0; border: 1px solid var(--border);
+  }
+  .toggle-switch::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px; background: var(--ink2);
+    border-radius: 50%; transition: all .3s;
+  }
+  .toggle-row.active .toggle-switch { background: var(--green); border-color: var(--green); }
+  .toggle-row.active .toggle-switch::after { left: 23px; background: white; }
+  .toggle-row.active .toggle-title { color: var(--green); }
+
+  .safe-badge {
+    display: none; align-items: center; gap: 6px; font-size: 0.72rem;
+    background: var(--green-light); color: var(--green);
+    border: 1px solid rgba(34,197,94,0.2); border-radius: 6px;
+    padding: 5px 10px; margin-bottom: 14px;
+  }
+  .safe-badge.show { display: flex; }
+
+  /* Simulate Button */
+  .btn-simulate {
+    width: 100%; padding: 14px; border-radius: 10px; border: none;
+    font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: all .2s; position: relative; overflow: hidden;
+    letter-spacing: 0.04em;
+  }
+  .btn-simulate.unsafe {
+    background: linear-gradient(135deg, #991b1b, #dc2626);
+    color: white; box-shadow: 0 4px 20px rgba(220,38,38,0.3);
+  }
+  .btn-simulate.unsafe:hover:not(:disabled) {
+    box-shadow: 0 6px 28px rgba(220,38,38,0.45);
+    transform: translateY(-1px);
+  }
+  .btn-simulate.safe {
+    background: linear-gradient(135deg, #166534, #16a34a);
+    color: white; box-shadow: 0 4px 20px rgba(22,163,74,0.3);
+  }
+  .btn-simulate.safe:hover:not(:disabled) {
+    box-shadow: 0 6px 28px rgba(22,163,74,0.45);
+    transform: translateY(-1px);
+  }
+  .btn-simulate:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+  .btn-simulate:active:not(:disabled) { transform: translateY(0) !important; }
+
+  .btn-icon { margin-right: 8px; }
+  .btn-spinner { display: none; }
+  .btn-simulate.loading .btn-spinner { display: inline; }
+  .btn-simulate.loading .btn-icon { display: none; }
+
+  .btn-reset {
+    width: 100%; padding: 9px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--ink2); font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem; cursor: pointer; transition: all .2s; margin-top: 10px;
+  }
+  .btn-reset:hover { border-color: var(--ink2); color: var(--ink); background: var(--surface2); }
+
+  /* ── TIMELINE PANEL ── */
+  .timeline-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;
+  }
+  .timeline-header {
+    padding: 18px 24px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface2); display: flex; align-items: center; justify-content: space-between;
+  }
+  .timeline-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.05rem; }
+  .tl-badges { display: flex; gap: 8px; }
+  .tl-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.65rem;
+    padding: 4px 10px; border-radius: 20px; font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  .tl-badge.a { background: var(--txn-a-light); color: var(--txn-a); border: 1px solid rgba(59,130,246,0.2); }
+  .tl-badge.b { background: var(--txn-b-light); color: var(--txn-b); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--ink2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend-dot.a { background: var(--txn-a); box-shadow: 0 0 6px var(--txn-a-glow); }
+  .legend-dot.b { background: var(--txn-b); box-shadow: 0 0 6px var(--txn-b-glow); }
+
+  /* Timeline Body */
+  .timeline-body {
+    flex: 1; padding: 20px 24px; min-height: 380px;
+    overflow-y: auto; display: flex; flex-direction: column; gap: 0;
+    position: relative;
+  }
+
+  .timeline-empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; color: var(--ink3);
+    padding: 40px;
+  }
+  .timeline-empty .empty-icon { font-size: 2.5rem; opacity: 0.4; }
+  .timeline-empty p { font-size: 0.82rem; text-align: center; }
+
+  /* Log Entry */
+  .log-entry {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid rgba(26,48,80,0.5);
+    animation: slideIn 0.35s ease both;
+  }
+  .log-entry:last-child { border-bottom: none; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-step {
+    font-family: 'DM Mono', monospace; font-size: 0.65rem;
+    color: var(--ink3); min-width: 24px; padding-top: 3px; text-align: right;
+  }
+  .log-line {
+    flex: 1; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .log-dot-col { display: flex; flex-direction: column; align-items: center; gap: 0; padding-top: 6px; }
+  .log-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .log-dot.a { background: var(--txn-a); box-shadow: 0 0 8px var(--txn-a-glow); }
+  .log-dot.b { background: var(--txn-b); box-shadow: 0 0 8px var(--txn-b-glow); }
+  .log-dot.sys { background: var(--ink3); }
+  .log-content { flex: 1; }
+
+  .log-tag {
+    font-family: 'DM Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px; margin-right: 8px;
+    letter-spacing: 0.06em;
+  }
+  .log-tag.a { background: var(--txn-a-light); color: var(--txn-a); }
+  .log-tag.b { background: var(--txn-b-light); color: var(--txn-b); }
+  .log-tag.sys { background: rgba(106,144,176,0.1); color: var(--ink2); }
+
+  .log-text { font-size: 0.82rem; color: var(--ink); line-height: 1.5; }
+  .log-text .val { font-family: 'DM Mono', monospace; color: var(--gold); font-size: 0.85rem; }
+  .log-text .action { color: var(--accent); }
+
+  /* Special log types */
+  .log-entry.commit-a .log-text { color: #93c5fd; }
+  .log-entry.commit-b .log-text { color: #fca5a5; }
+  .log-entry.warn .log-text { color: var(--warn); }
+  .log-entry.success .log-text { color: var(--green); }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    margin: 16px 24px; border-radius: 12px; padding: 18px 22px;
+    display: none; animation: slideIn 0.4s ease both;
+  }
+  .result-card.show { display: block; }
+  .result-card.lost {
+    background: var(--warn-light); border: 1px solid rgba(249,115,22,0.3);
+  }
+  .result-card.safe-result {
+    background: var(--green-light); border: 1px solid rgba(34,197,94,0.3);
+  }
+  .result-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .result-icon { font-size: 1.4rem; }
+  .result-title { font-family: 'DM Serif Display', serif; font-size: 1.1rem; }
+  .result-card.lost .result-title { color: var(--warn); }
+  .result-card.safe-result .result-title { color: var(--green); }
+  .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .result-stat { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 14px; }
+  .result-stat-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink3); margin-bottom: 4px; }
+  .result-stat-value { font-family: 'DM Mono', monospace; font-size: 1.1rem; }
+  .result-card.lost .result-stat-value { color: var(--warn); }
+  .result-card.safe-result .result-stat-value { color: var(--green); }
+  .result-explain { font-size: 0.78rem; color: var(--ink2); line-height: 1.6; margin-top: 12px; }
+  .result-explain strong { color: var(--ink); }
+
+  /* ── BOTTOM: HOW IT WORKS ── */
+  .explainer { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .explainer-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px; position: relative;
+  }
+  .explainer-card h3 { font-family: 'DM Serif Display', serif; font-size: 1rem; margin-bottom: 14px; }
+  .timeline-steps { display: flex; flex-direction: column; gap: 0; }
+  .ts-row { display: flex; gap: 0; }
+  .ts-col {
+    flex: 1; padding: 8px 12px; font-size: 0.73rem; border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border); line-height: 1.4;
+  }
+  .ts-col:last-child { border-right: none; }
+  .ts-col.header {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em;
+    background: var(--surface2); color: var(--ink2); font-weight: 600;
+  }
+  .ts-col.a-col { color: var(--txn-a); }
+  .ts-col.b-col { color: var(--txn-b); }
+  .ts-col.time-col { color: var(--ink3); font-family: 'DM Mono', monospace; font-size: 0.65rem; flex: 0 0 50px; }
+  .ts-col.note-col { color: var(--ink2); font-size: 0.7rem; flex: 0 0 120px; }
+  .ts-row:last-child .ts-col { border-bottom: none; }
+  .ts-row .ts-col.highlight { background: rgba(249,115,22,0.08); color: var(--warn); }
+  .ts-row .ts-col.highlight-green { background: rgba(34,197,94,0.08); color: var(--green); }
+
+  /* loading spinner */
+  .spin {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+    border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* scrollbar */
+  .timeline-body::-webkit-scrollbar { width: 4px; }
+  .timeline-body::-webkit-scrollbar-track { background: transparent; }
+  .timeline-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media(max-width:1000px){
+    .main-grid { grid-template-columns: 1fr; }
+    .concept-row { grid-template-columns: 1fr; }
+    .explainer { grid-template-columns: 1fr; }
+    .page { padding: 20px 16px 60px; }
+    .header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="dot-a"></div>
+    <div class="dot-b"></div>
+    WMS <span class="brand-text">Concurrency Lab</span>
+  </div>
+  <nav class="header-nav">
+    <a href="/warehouse/1" class="nav-link">📦 Dashboard</a>
+    <a href="/warehouse/1/producers" class="nav-link">🏭 Producers</a>
+    <a href="/concurrency" class="nav-link active">⚡ Concurrency Lab</a>
+  </nav>
+</header>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Database Concurrency · Task 6</div>
+    <h1>Lost Update <em>Simulator</em></h1>
+    <p class="hero-desc">
+      Two transactions read the same price, update it independently, and one overwrites the other.
+      Watch the race condition unfold in real-time — then enable Safe Mode to see locking prevent it.
+    </p>
+  </div>
+
+  <!-- CONCEPT CARDS -->
+  <div class="concept-row">
+    <div class="concept-card a">
+      <div class="concept-icon">🔵</div>
+      <div class="concept-label">Transaction A — Slow</div>
+      <div class="concept-desc">Reads the price, <strong style="color:var(--txn-a)">sleeps 2 seconds</strong>, then updates to its value. By the time it wakes up, Transaction B has already committed.</div>
+    </div>
+    <div class="concept-card b">
+      <div class="concept-icon">🔴</div>
+      <div class="concept-label">Transaction B — Fast</div>
+      <div class="concept-desc">Reads the same initial price, immediately updates and commits. Its change is completely <strong style="color:var(--txn-b)">overwritten</strong> by A — a Lost Update.</div>
+    </div>
+    <div class="concept-card result">
+      <div class="concept-icon">🔒</div>
+      <div class="concept-label">Safe Mode — FOR UPDATE</div>
+      <div class="concept-desc">A acquires a <strong style="color:var(--gold)">row-level lock</strong>. B blocks and waits. Sequential execution — no data loss, no conflict.</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- CONTROL PANEL -->
+    <div class="control-panel">
+      <div class="panel-header">
+        <h2>⚙ Simulation Controls</h2>
+        <p>Configure values and run the simulation</p>
+      </div>
+      <div class="panel-body">
+
+        <!-- Current price display -->
+        <div class="price-display">
+          <div>
+            <div class="price-label">Current Price in DB</div>
+            <div class="price-product" id="productLabel">Parle G Biscuits (Producer 4, Product 10)</div>
+          </div>
+          <div>
+            <div class="price-value" id="currentPrice">₹10.00</div>
+          </div>
+        </div>
+
+        <!-- Product selector -->
+        <div class="field">
+          <label class="neutral">Target Product</label>
+          <select id="productSelect" onchange="onProductChange()">
+            <option value="4,10,10">Parle G Biscuits — ₹10</option>
+            <option value="1,1,30">Amul Milk — ₹30</option>
+            <option value="2,4,25">Britannia Good Day — ₹25</option>
+            <option value="4,12,5">Parle Melody Toffee — ₹5</option>
+          </select>
+        </div>
+
+        <!-- Txn A value -->
+        <div class="field a-field">
+          <label class="a-label">🔵 Transaction A updates price to (₹)</label>
+          <input type="number" id="valueA" value="40" min="1" max="9999" step="1"/>
+        </div>
+
+        <!-- Txn B value -->
+        <div class="field b-field">
+          <label class="b-label">🔴 Transaction B updates price to (₹)</label>
+          <input type="number" id="valueB" value="35" min="1" max="9999" step="1"/>
+        </div>
+
+        <!-- Safe Mode Toggle -->
+        <div class="toggle-row" id="toggleRow" onclick="toggleSafeMode()">
+          <div class="toggle-info">
+            <div class="toggle-title" id="toggleTitle">🔓 Safe Mode Off</div>
+            <div class="toggle-sub" id="toggleSub">Race condition enabled — lost update will occur</div>
+          </div>
+          <div class="toggle-switch" id="toggleSwitch"></div>
+        </div>
+
+        <div class="safe-badge" id="safeBadge">
+          🔒 SELECT … FOR UPDATE will serialize transactions
+        </div>
+
+        <!-- Simulate Button -->
+        <button class="btn-simulate unsafe" id="simulateBtn" onclick="runSimulation()">
+          <span class="btn-icon">⚡</span>
+          <span class="btn-spinner"><span class="spin"></span></span>
+          <span id="btnLabel">Simulate Lost Update</span>
+        </button>
+
+        <button class="btn-reset" onclick="resetPrice()">↺ Reset Price to Initial Value</button>
+
+      </div>
+    </div>
+
+    <!-- TIMELINE PANEL -->
+    <div class="timeline-panel">
+      <div class="timeline-header">
+        <div>
+          <h2>⏱ Execution Timeline</h2>
+        </div>
+        <div class="tl-badges">
+          <span class="tl-badge a">TXN A</span>
+          <span class="tl-badge b">TXN B</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot a"></div> Transaction A (slow, sleeps 2s)</div>
+        <div class="legend-item"><div class="legend-dot b"></div> Transaction B (fast, no sleep)</div>
+      </div>
+
+      <div class="timeline-body" id="timelineBody">
+        <div class="timeline-empty" id="emptyState">
+          <div class="empty-icon">📋</div>
+          <p>No simulation run yet.<br>Configure values and click <strong style="color:var(--ink)">Simulate</strong>.</p>
+        </div>
+      </div>
+
+      <!-- Result Card -->
+      <div class="result-card" id="resultCard">
+        <div class="result-header">
+          <div class="result-icon" id="resultIcon">⚠️</div>
+          <div class="result-title" id="resultTitle">Lost Update Occurred</div>
+        </div>
+        <div class="result-grid">
+          <div class="result-stat">
+            <div class="result-stat-label">Initial Value</div>
+            <div class="result-stat-value" id="resInitial">₹10</div>
+          </div>
+          <div class="result-stat">
+            <div class="result-stat-label">Expected Final</div>
+            <div class="result-stat-value" id="resExpected">₹35 + ₹40</div>
+          </div>
+          <div class="result-stat">
+            <div class="result-stat-label">Actual Final</div>
+            <div class="result-stat-value" id="resFinal">₹40</div>
+          </div>
+        </div>
+        <div class="result-explain" id="resultExplain"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- EXPLAINER -->
+  <div class="explainer">
+    <div class="explainer-card">
+      <h3>🔴 Unsafe Mode — How Lost Update Happens</h3>
+      <div class="timeline-steps">
+        <div class="ts-row">
+          <div class="ts-col time-col header">Time</div>
+          <div class="ts-col header a-col">Transaction A</div>
+          <div class="ts-col header b-col">Transaction B</div>
+          <div class="ts-col note-col header">DB Value</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=0</div>
+          <div class="ts-col a-col">START TXN<br>SELECT → reads 10</div>
+          <div class="ts-col b-col">—</div>
+          <div class="ts-col note-col">10</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=0.3s</div>
+          <div class="ts-col a-col">😴 Sleeping…</div>
+          <div class="ts-col b-col">START TXN<br>SELECT → reads 10</div>
+          <div class="ts-col note-col">10</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=0.5s</div>
+          <div class="ts-col a-col">😴 Sleeping…</div>
+          <div class="ts-col b-col highlight-green">UPDATE → 35<br>COMMIT ✓</div>
+          <div class="ts-col note-col highlight-green">35</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=2.3s</div>
+          <div class="ts-col a-col highlight">UPDATE → 40<br>COMMIT ✗ overwrites!</div>
+          <div class="ts-col b-col">Done</div>
+          <div class="ts-col note-col highlight">40 ⚠ B lost!</div>
+        </div>
+      </div>
+    </div>
+    <div class="explainer-card">
+      <h3>🟢 Safe Mode — How Locking Prevents It</h3>
+      <div class="timeline-steps">
+        <div class="ts-row">
+          <div class="ts-col time-col header">Time</div>
+          <div class="ts-col header a-col">Transaction A</div>
+          <div class="ts-col header b-col">Transaction B</div>
+          <div class="ts-col note-col header">DB Value</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=0</div>
+          <div class="ts-col a-col">START TXN<br>SELECT FOR UPDATE 🔒</div>
+          <div class="ts-col b-col">—</div>
+          <div class="ts-col note-col">10 (locked)</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=0.3s</div>
+          <div class="ts-col a-col">😴 Sleeping…</div>
+          <div class="ts-col b-col">SELECT FOR UPDATE<br>⏳ BLOCKED by A</div>
+          <div class="ts-col note-col">10 (locked)</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=2s</div>
+          <div class="ts-col a-col highlight-green">UPDATE → 40<br>COMMIT ✓ releases lock</div>
+          <div class="ts-col b-col">Unblocked! reads 40</div>
+          <div class="ts-col note-col highlight-green">40</div>
+        </div>
+        <div class="ts-row">
+          <div class="ts-col time-col">T=2.1s</div>
+          <div class="ts-col a-col">Done</div>
+          <div class="ts-col b-col highlight-green">UPDATE → 35<br>COMMIT ✓</div>
+          <div class="ts-col note-col highlight-green">35 ✓ No loss!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let safeMode = false;
+let simRunning = false;
+
+// product: [producer_id, product_id, initial_price]
+const productMap = {
+  "4,10,10":  { name: "Parle G Biscuits (Producer 4 · Product 10)", initial: 10 },
+  "1,1,30":   { name: "Amul Milk (Producer 1 · Product 1)", initial: 30 },
+  "2,4,25":   { name: "Britannia Good Day (Producer 2 · Product 4)", initial: 25 },
+  "4,12,5":   { name: "Parle Melody Toffee (Producer 4 · Product 12)", initial: 5 },
+};
+
+function toggleSafeMode() {
+  safeMode = !safeMode;
+  const row = document.getElementById('toggleRow');
+  const title = document.getElementById('toggleTitle');
+  const sub   = document.getElementById('toggleSub');
+  const badge = document.getElementById('safeBadge');
+  const btn   = document.getElementById('simulateBtn');
+  const lbl   = document.getElementById('btnLabel');
+
+  if (safeMode) {
+    row.classList.add('active');
+    title.textContent = '🔒 Safe Mode On';
+    sub.textContent   = 'SELECT … FOR UPDATE — transactions serialized';
+    badge.classList.add('show');
+    btn.className = 'btn-simulate safe';
+    lbl.textContent = 'Simulate with Locking';
+  } else {
+    row.classList.remove('active');
+    title.textContent = '🔓 Safe Mode Off';
+    sub.textContent   = 'Race condition enabled — lost update will occur';
+    badge.classList.remove('show');
+    btn.className = 'btn-simulate unsafe';
+    lbl.textContent = 'Simulate Lost Update';
+  }
+}
+
+function onProductChange() {
+  const key = document.getElementById('productSelect').value;
+  const p   = productMap[key];
+  if (p) {
+    document.getElementById('productLabel').textContent  = p.name;
+    document.getElementById('currentPrice').textContent  = '₹' + p.initial.toFixed(2);
+  }
+}
+
+function setCurrentPrice(val) {
+  document.getElementById('currentPrice').textContent = '₹' + parseFloat(val).toFixed(2);
+}
+
+async function resetPrice() {
+  const key = document.getElementById('productSelect').value;
+  const [pid, prdid] = key.split(',').map(Number);
+  const p = productMap[key];
+  try {
+    const res = await fetch('/simulate/reset', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ producer_id: pid, product_id: prdid, initial: p.initial })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setCurrentPrice(p.initial);
+      addSystemLog('Price reset to ₹' + p.initial + ' in database');
+    }
+  } catch(e) {
+    addSystemLog('Reset failed: ' + e.message);
+  }
+}
+
+async function runSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+
+  const btn = document.getElementById('simulateBtn');
+  const lbl = document.getElementById('btnLabel');
+  const spinner = btn.querySelector('.btn-spinner');
+
+  btn.disabled = true;
+  spinner.style.display = 'inline';
+  lbl.style.opacity = '0';
+
+  // Clear timeline
+  clearTimeline();
+
+  const key = document.getElementById('productSelect').value;
+  const [pid, prdid, initPrice] = key.split(',').map(Number);
+  const valueA = parseInt(document.getElementById('valueA').value) || 40;
+  const valueB = parseInt(document.getElementById('valueB').value) || 35;
+
+  // Show "running" logs immediately
+  addLog('A', 'Transaction A: START TRANSACTION', 'start');
+  await delay(300);
+  addLog('A', `Transaction A: SELECT price_before_tax → reads <span class="val">₹${initPrice}</span>`, 'read');
+  await delay(150);
+  addLog('B', 'Transaction B: START TRANSACTION', 'start');
+  await delay(100);
+  addLog('B', `Transaction B: SELECT price_before_tax → reads <span class="val">₹${initPrice}</span>`, 'read');
+  await delay(100);
+
+  if (safeMode) {
+    addLog('A', '🔒 Transaction A acquired <span class="action">row-level lock</span> (FOR UPDATE)', 'lock');
+    await delay(100);
+    addLog('B', '⏳ Transaction B blocked — waiting for lock held by A…', 'wait');
+  }
+
+  addLog('A', '😴 Transaction A sleeping for 2 seconds…', 'sleep');
+
+  // Now actually run the backend simulation
+  try {
+    const res = await fetch('/simulate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        safe_mode: safeMode,
+        producer_id: pid,
+        product_id: prdid,
+        value_a: valueA,
+        value_b: valueB,
+        initial_price: initPrice
+      })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      addSystemLog('⚠ Server error: ' + data.error);
+      return;
+    }
+
+    // Animate the rest of the logs from server
+    const serverLogs = data.logs || [];
+    for (const log of serverLogs) {
+      await delay(200);
+      const cls = log.txn === 'A' ? 'txn-a' : log.txn === 'B' ? 'txn-b' : 'sys';
+      addLog(log.txn, log.msg, cls);
+    }
+
+    await delay(300);
+
+    // Update displayed price
+    setCurrentPrice(data.final_value);
+
+    // Show result card
+    showResult(data, valueA, valueB, initPrice, safeMode);
+
+  } catch(e) {
+    addSystemLog('❌ Fetch error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    lbl.style.opacity = '1';
+    simRunning = false;
+  }
+}
+
+function clearTimeline() {
+  const body = document.getElementById('timelineBody');
+  body.innerHTML = '<div class="timeline-empty" id="emptyState" style="display:none"></div>';
+  document.getElementById('resultCard').classList.remove('show');
+  logCount = 0;
+}
+
+let logCount = 0;
+function addLog(txn, msg, type) {
+  logCount++;
+  const body = document.getElementById('timelineBody');
+  const empty = document.getElementById('emptyState');
+  if (empty) empty.style.display = 'none';
+
+  const cls = txn === 'A' ? 'a' : txn === 'B' ? 'b' : 'sys';
+  const entry = document.createElement('div');
+  let extraClass = '';
+  if (type === 'commit-a') extraClass = ' commit-a';
+  if (type === 'commit-b') extraClass = ' commit-b';
+  if (type === 'warn')     extraClass = ' warn';
+  if (type === 'success')  extraClass = ' success';
+
+  entry.className = 'log-entry' + extraClass;
+  entry.innerHTML = `
+    <div class="log-step">${String(logCount).padStart(2,'0')}</div>
+    <div class="log-line">
+      <div class="log-dot-col"><div class="log-dot ${cls}"></div></div>
+      <div class="log-content">
+        <span class="log-tag ${cls}">${txn === 'A' ? 'TXN A' : txn === 'B' ? 'TXN B' : 'SYS'}</span>
+        <span class="log-text">${msg}</span>
+      </div>
+    </div>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+}
+
+function addSystemLog(msg) {
+  addLog('SYS', msg, 'sys');
+}
+
+function showResult(data, valueA, valueB, initPrice, safe) {
+  const card  = document.getElementById('resultCard');
+  const icon  = document.getElementById('resultIcon');
+  const title = document.getElementById('resultTitle');
+  const final = document.getElementById('resFinal');
+  const init  = document.getElementById('resInitial');
+  const exp   = document.getElementById('resExpected');
+  const expl  = document.getElementById('resultExplain');
+
+  init.textContent = '₹' + initPrice;
+  exp.textContent  = '₹' + valueA + ' & ₹' + valueB;
+  final.textContent = '₹' + parseFloat(data.final_value).toFixed(2);
+
+  if (data.lost_update && !safe) {
+    card.className = 'result-card show lost';
+    icon.textContent  = '⚠️';
+    title.textContent = 'Lost Update Occurred!';
+    expl.innerHTML = `Transaction B updated the price to <strong>₹${valueB}</strong> and committed successfully.
+      But Transaction A — which read the <strong>original value of ₹${initPrice}</strong> before B ran —
+      woke up and overwrote B's change with <strong>₹${valueA}</strong>.
+      <br><br>Transaction B's update of <strong style="color:var(--txn-b)">₹${valueB} is completely lost</strong>.
+      This is the classic <em>Lost Update</em> concurrency anomaly.
+      Enable <strong>Safe Mode</strong> to prevent this.`;
+  } else {
+    card.className = 'result-card show safe-result';
+    icon.textContent  = '✅';
+    title.textContent = 'No Lost Update — Locking Worked!';
+    expl.innerHTML = `Transaction A used <strong>SELECT … FOR UPDATE</strong> to acquire a row-level lock.
+      Transaction B was <strong>blocked</strong> and had to wait until A committed.
+      After A committed ₹${valueA}, B unblocked, read the new value, then committed ₹${valueB}.
+      <br><br>Both updates applied in sequence — <strong style="color:var(--green)">no data was lost</strong>.
+      This is the correct behavior under proper locking.`;
+  }
+
+  card.classList.add('show');
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Load initial price on page load
+window.addEventListener('DOMContentLoaded', () => onProductChange());
+</script>
+</body>
+</html>

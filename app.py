@@ -3,28 +3,30 @@ import mysql.connector
 from mysql.connector import Error
 import bcrypt
 import re
-
+import threading
+import time
+ 
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_session"
-
-
+ 
+ 
 def get_db_connection():
     return mysql.connector.connect(
         host="localhost", user="root",
         password="Vansh173@", database="supplychain_db"
     )
-
+ 
 def get_auth_connection():
     return mysql.connector.connect(
         host="localhost", user="root",
         password="Vansh173@", database="auth_db"
     )
-
-
+ 
+ 
 @app.route("/")
 def home():
     return redirect(url_for("login_page"))
-
+ 
 @app.route("/health")
 def health():
     try:
@@ -34,17 +36,17 @@ def health():
             return "DB connected", 200
     except Error:
         return "DB not connected", 500
-
-
+ 
+ 
 @app.route("/login")
 def login_page():
     return render_template("auth/login.html")
-
+ 
 @app.route("/signup-page")
 def signup_page():
     return render_template("auth/signup.html")
-
-
+ 
+ 
 @app.route("/signup", methods=["POST"])
 def signup():
     auth_conn = None
@@ -54,16 +56,16 @@ def signup():
         username = data["username"]
         password = data["password"]
         role_id  = int(data["role_id"])
-
+ 
         if len(password) < 6:
             return {"error": "Password must be at least 6 characters."}, 400
-
+ 
         hashed    = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
         linked_id = None
-
+ 
         db_conn = get_db_connection()
         db_cur  = db_conn.cursor()
-
+ 
         if role_id == 1:
             company_name = data.get("company_name", "").strip()
             phone        = data.get("phone", "").strip()
@@ -82,14 +84,14 @@ def signup():
             )
             linked_id = db_cur.lastrowid
             db_conn.commit()
-
+ 
         elif role_id == 2:
             db_cur.execute("SELECT warehouse_id FROM Warehouse WHERE warehouse_id = 1")
             wh = db_cur.fetchone()
             if not wh:
                 return {"error": "Main Warehouse (id=1) not found. Run data.sql first."}, 400
             linked_id = 1
-
+ 
         elif role_id == 3:
             first_name = data.get("first_name", "").strip()
             last_name  = data.get("last_name", "").strip()
@@ -106,9 +108,9 @@ def signup():
                 (linked_id,)
             )
             db_conn.commit()
-
+ 
         db_cur.close()
-
+ 
         auth_conn = get_auth_connection()
         auth_cur  = auth_conn.cursor()
         auth_cur.execute(
@@ -117,9 +119,9 @@ def signup():
         )
         auth_conn.commit()
         auth_cur.close()
-
+ 
         return {"message": "User created", "role_id": role_id, "user_id": linked_id}, 201
-
+ 
     except mysql.connector.Error as e:
         if db_conn:
             try: db_conn.rollback()
@@ -135,8 +137,8 @@ def signup():
     finally:
         if auth_conn: auth_conn.close()
         if db_conn:   db_conn.close()
-
-
+ 
+ 
 @app.route("/login", methods=["POST"])
 def login():
     conn = None; cursor = None
@@ -165,20 +167,20 @@ def login():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
-
+ 
+ 
 @app.route("/producer")
 def producer_redirect():
     return redirect(url_for("producer_dashboard", producer_id=1))
-
+ 
 @app.route("/admin")
 def admin_redirect():
     return redirect(url_for("warehouse_dashboard", warehouse_id=1))
-
+ 
 @app.route("/customer")
 def customer_redirect():
     return redirect(url_for("customer_dashboard", customer_id=1))
-
+ 
 @app.route("/link-account", methods=["POST"])
 def link_account():
     conn = None; cursor = None
@@ -198,8 +200,8 @@ def link_account():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
-
+ 
+ 
 @app.route("/producers")
 def get_producers():
     try:
@@ -211,7 +213,7 @@ def get_producers():
         return jsonify(producers), 200
     except Error as e:
         return jsonify({"error": str(e)}), 500
-
+ 
 @app.route("/inventory")
 def inventory():
     try:
@@ -228,7 +230,7 @@ def inventory():
         return jsonify(data), 200
     except Error as e:
         return jsonify({"error": str(e)}), 500
-
+ 
 @app.route("/batches")
 def batches():
     try:
@@ -246,8 +248,8 @@ def batches():
         return jsonify(data), 200
     except Error as e:
         return jsonify({"error": str(e)}), 500
-
-
+ 
+ 
 @app.route("/place-order", methods=["POST"])
 def place_order():
     conn = None; cursor = None
@@ -277,7 +279,7 @@ def place_order():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
+ 
 @app.route("/confirm-order", methods=["POST"])
 def confirm_order():
     try:
@@ -290,7 +292,7 @@ def confirm_order():
         return jsonify({"message": "Order confirmed successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+ 
 @app.route("/test-failure", methods=["POST"])
 def test_failure():
     conn = None; cursor = None
@@ -322,8 +324,8 @@ def test_failure():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
-
+ 
+ 
 @app.route("/demo/inventory")
 def demo_inventory():
     conn = None; cursor = None
@@ -342,7 +344,7 @@ def demo_inventory():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
+ 
 @app.route("/demo/orders")
 def demo_orders():
     conn = None; cursor = None
@@ -363,7 +365,7 @@ def demo_orders():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
+ 
 @app.route("/demo/wallets")
 def demo_wallets():
     conn = None; cursor = None
@@ -380,7 +382,7 @@ def demo_wallets():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
+ 
 @app.route("/analytics/low-stock")
 def analytics_low_stock():
     conn = None; cursor = None
@@ -394,7 +396,7 @@ def analytics_low_stock():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
+ 
 @app.route("/analytics/warehouse-summary")
 def analytics_warehouse_summary():
     conn = None; cursor = None
@@ -408,8 +410,8 @@ def analytics_warehouse_summary():
     finally:
         if cursor: cursor.close()
         if conn:   conn.close()
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>")
 def warehouse_dashboard(warehouse_id):
     conn = None
@@ -484,8 +486,8 @@ def warehouse_dashboard(warehouse_id):
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/send-request", methods=["POST"])
 def send_request(warehouse_id):
     conn = None
@@ -516,8 +518,8 @@ def send_request(warehouse_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/accept-price-change/<int:request_id>", methods=["POST"])
 def accept_price_change(warehouse_id, request_id):
     conn = None
@@ -539,8 +541,8 @@ def accept_price_change(warehouse_id, request_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/cancel-request/<int:request_id>", methods=["POST"])
 def cancel_request(warehouse_id, request_id):
     conn = None
@@ -559,8 +561,8 @@ def cancel_request(warehouse_id, request_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/deliver-order/<int:order_id>", methods=["POST"])
 def deliver_order(warehouse_id, order_id):
     conn = None
@@ -605,8 +607,8 @@ def deliver_order(warehouse_id, order_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/add-budget", methods=["POST"])
 def add_budget(warehouse_id):
     conn = None
@@ -631,8 +633,8 @@ def add_budget(warehouse_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/producers")
 def admin_producers(warehouse_id):
     conn = None
@@ -671,8 +673,8 @@ def admin_producers(warehouse_id):
         return f"<h2>Error: {str(e)} <a href=/login>Back</a></h2>", 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 # ── FIXED: direct SQL instead of broken stored proc ──
 @app.route("/warehouse/<int:warehouse_id>/approve-producer/<int:producer_id>", methods=["POST"])
 def approve_producer(warehouse_id, producer_id):
@@ -693,8 +695,8 @@ def approve_producer(warehouse_id, producer_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("admin_producers", warehouse_id=warehouse_id))
-
-
+ 
+ 
 @app.route("/warehouse/<int:warehouse_id>/analytics")
 def analytics_dashboard(warehouse_id):
     conn = None
@@ -705,7 +707,7 @@ def analytics_dashboard(warehouse_id):
         warehouse = cursor.fetchone()
         if not warehouse:
             return f"<h2>Warehouse not found. <a href=/login>Back</a></h2>", 404
-
+ 
         cursor.execute("""
             SELECT
                 producer_id, producer_name, earnings, approval_status,
@@ -720,7 +722,7 @@ def analytics_dashboard(warehouse_id):
         for p in producer_rankings:
             p['earnings']  = float(p['earnings'] or 0)
             p['pct_share'] = float(p['pct_share'] or 0)
-
+ 
         cursor.execute("""
             SELECT
                 b.batch_id, b.arrival_date, p.product_name,
@@ -739,7 +741,7 @@ def analytics_dashboard(warehouse_id):
         for r in running_batches:
             r['batch_value']        = float(r['batch_value'])
             r['running_total_cost'] = float(r['running_total_cost'])
-
+ 
         cursor.execute("""
             SELECT
                 COALESCE(pr.producer_name, '── GRAND TOTAL ──') AS producer_name,
@@ -759,7 +761,7 @@ def analytics_dashboard(warehouse_id):
             r['total_units']   = int(r['total_units'] or 0)
             r['is_subtotal']   = r['product_name'] in ('── Subtotal ──', '── GRAND TOTAL ──')
             r['is_grand']      = r['producer_name'] == '── GRAND TOTAL ──'
-
+ 
         cursor.execute("""
             SELECT
                 p.product_name,
@@ -778,7 +780,7 @@ def analytics_dashboard(warehouse_id):
             f['price_before_tax'] = float(f['price_before_tax'])
             f['price_after_gst']  = float(f['price_after_gst'])
             f['producer_revenue'] = float(f['producer_revenue'])
-
+ 
         cursor.execute("""
             WITH RECURSIVE category_tree AS (
                 SELECT
@@ -805,7 +807,7 @@ def analytics_dashboard(warehouse_id):
             LIMIT 60
         """)
         category_tree = cursor.fetchall()
-
+ 
         try:
             cursor.execute("""
                 SELECT log_id, table_name, operation, record_id,
@@ -818,7 +820,7 @@ def analytics_dashboard(warehouse_id):
                 a['changed_at'] = str(a['changed_at'])
         except Exception:
             audit_logs = []
-
+ 
         return render_template("admin/analytics.html",
             warehouse         = warehouse,
             producer_rankings = producer_rankings,
@@ -832,8 +834,8 @@ def analytics_dashboard(warehouse_id):
         return f"<h2>Analytics error: {str(e)} <a href=/warehouse/{warehouse_id}>Back</a></h2>", 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/analytics/audit-log")
 def audit_log_api():
     conn = None
@@ -854,8 +856,8 @@ def audit_log_api():
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/producer/<int:producer_id>")
 def producer_dashboard(producer_id):
     conn = None
@@ -903,8 +905,8 @@ def producer_dashboard(producer_id):
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/producer/add-product/<int:producer_id>", methods=["POST"])
 def add_product(producer_id):
     conn = None
@@ -950,8 +952,8 @@ def add_product(producer_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
-
-
+ 
+ 
 @app.route("/producer/change-price/<int:producer_id>", methods=["POST"])
 def change_price(producer_id):
     conn = None
@@ -989,8 +991,8 @@ def change_price(producer_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
-
-
+ 
+ 
 @app.route("/producer/fulfill/<int:request_id>", methods=["POST"])
 def fulfill_request(request_id):
     conn = None; req = None
@@ -1048,8 +1050,8 @@ def fulfill_request(request_id):
         if conn: conn.close()
     producer_id = req["producer_id"] if req else 1
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
-
-
+ 
+ 
 @app.route("/producer/fulfill-v2/<int:request_id>", methods=["POST"])
 def fulfill_request_v2(request_id):
     conn = None
@@ -1074,8 +1076,8 @@ def fulfill_request_v2(request_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>")
 def customer_dashboard(customer_id):
     conn = None
@@ -1117,8 +1119,8 @@ def customer_dashboard(customer_id):
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/balance")
 def customer_balance(customer_id):
     conn = None
@@ -1133,8 +1135,8 @@ def customer_balance(customer_id):
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/checkout", methods=["POST"])
 def customer_checkout(customer_id):
     conn = None
@@ -1177,8 +1179,8 @@ def customer_checkout(customer_id):
         return jsonify({"error": error_msg}), 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/checkout-v2", methods=["POST"])
 def customer_checkout_v2(customer_id):
     conn = None
@@ -1221,8 +1223,8 @@ def customer_checkout_v2(customer_id):
         return jsonify({"error": clean}), 400
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/add-funds", methods=["POST"])
 def add_funds(customer_id):
     conn = None
@@ -1254,8 +1256,8 @@ def add_funds(customer_id):
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/add-funds-v2", methods=["POST"])
 def add_funds_v2(customer_id):
     conn = None
@@ -1280,8 +1282,8 @@ def add_funds_v2(customer_id):
         return jsonify({"error": clean}), 400
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/orders")
 def customer_orders(customer_id):
     conn = None
@@ -1292,7 +1294,7 @@ def customer_orders(customer_id):
         customer = cursor.fetchone()
         if not customer:
             return f"<h2>Customer not found. <a href=/login>Back</a></h2>", 404
-
+ 
         cursor.execute("""
             SELECT order_id FROM `Order`
             WHERE customer_id = %s AND order_status = 'CONFIRMED'
@@ -1311,11 +1313,11 @@ def customer_orders(customer_id):
             except Exception:
                 try: conn.rollback()
                 except: pass
-
+ 
         cursor.execute("SELECT balance FROM Wallet WHERE customer_id = %s", (customer_id,))
         w = cursor.fetchone()
         wallet_balance = float(w["balance"]) if w else 0.0
-
+ 
         cursor.execute("""
             SELECT o.order_id, o.order_status, o.created_at,
                    o.total_items, o.total_amount, w.warehouse_name,
@@ -1337,7 +1339,7 @@ def customer_orders(customer_id):
             order["total_amount"] = float(order["total_amount"]) if order["total_amount"] else 0.0
             age = int(order["age_seconds"] or 0)
             order["cancel_seconds_left"] = max(0, 10 - age) if order["order_status"] == "CONFIRMED" else 0
-
+ 
         total_spent = sum(o["total_amount"] for o in orders)
         return render_template("customer/orders.html",
                                customer=customer,
@@ -1348,8 +1350,8 @@ def customer_orders(customer_id):
         return f"<h2>Error: {str(e)} <a href=/login>Back</a></h2>", 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
 @app.route("/customer/<int:customer_id>/cancel-order/<int:order_id>", methods=["POST"])
 def cancel_order(customer_id, order_id):
     conn = None
@@ -1358,7 +1360,7 @@ def cancel_order(customer_id, order_id):
         conn.autocommit = False
         cursor = conn.cursor(dictionary=True)
         conn.start_transaction()
-
+ 
         cursor.execute("""
             SELECT order_id, order_status, warehouse_id, total_amount, customer_id
             FROM `Order`
@@ -1366,19 +1368,19 @@ def cancel_order(customer_id, order_id):
             FOR UPDATE
         """, (order_id, customer_id))
         order = cursor.fetchone()
-
+ 
         if not order:
             conn.rollback()
             return jsonify({"error": "Order not found or does not belong to you"}), 404
-
+ 
         status = order["order_status"]
         if status not in ("CREATED", "CONFIRMED"):
             conn.rollback()
             return jsonify({"error": f"Cannot cancel an order with status {status}"}), 400
-
+ 
         order_total  = float(order["total_amount"])
         warehouse_id = order["warehouse_id"]
-
+ 
         cursor.execute("""
             UPDATE Inventory i
             JOIN Order_Item oi ON oi.product_id = i.product_id
@@ -1388,25 +1390,25 @@ def cancel_order(customer_id, order_id):
               AND i.warehouse_id = %s
               AND i.reserved_qty >= oi.quantity
         """, (order_id, warehouse_id))
-
+ 
         refund = 0.0
         if status == "CONFIRMED":
             cursor.execute("""
                 UPDATE Wallet SET balance = balance + %s WHERE customer_id = %s
             """, (order_total, customer_id))
             refund = order_total
-
+ 
         cursor.execute(
             "UPDATE `Order` SET order_status = 'FAILED' WHERE order_id = %s",
             (order_id,)
         )
         conn.commit()
-
+ 
         msg = f"Order #{order_id} cancelled."
         if refund > 0:
             msg += f" ₹{refund:.2f} refunded to your wallet."
         return jsonify({"message": msg, "refund": refund}), 200
-
+ 
     except Exception as e:
         if conn:
             try: conn.rollback()
@@ -1414,16 +1416,217 @@ def cancel_order(customer_id, order_id):
         return jsonify({"error": str(e)}), 500
     finally:
         if conn: conn.close()
-
-
+ 
+ 
+# ─────────────────────────────────────────────
+#  CONCURRENCY LAB  —  Lost Update Simulator
+# ─────────────────────────────────────────────
+ 
+@app.route("/concurrency")
+def concurrency_page():
+    return render_template("concurrency/lost_update.html")
+ 
+ 
+@app.route("/simulate/reset", methods=["POST"])
+def simulate_reset():
+    """Reset a product's price to its initial value before a simulation run."""
+    conn = None
+    try:
+        data        = request.json
+        producer_id = int(data["producer_id"])
+        product_id  = int(data["product_id"])
+        initial     = float(data["initial"])
+        conn   = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE Producer_Product SET price_before_tax = %s "
+            "WHERE producer_id = %s AND product_id = %s",
+            (initial, producer_id, product_id)
+        )
+        conn.commit()
+        cursor.close()
+        return jsonify({"ok": True, "reset_to": initial}), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if conn: conn.close()
+ 
+ 
+@app.route("/simulate", methods=["POST"])
+def simulate_lost_update():
+    """
+    Spawns two concurrent DB transactions to demonstrate the Lost Update problem.
+ 
+    Unsafe mode  (safe_mode=false):
+        Txn A  →  START TXN  →  SELECT (no lock)  →  sleep 2 s  →  UPDATE to value_a  →  COMMIT
+        Txn B  →  START TXN  →  SELECT (no lock)  →  UPDATE to value_b  →  COMMIT
+        Both read the same initial value; B commits first; A overwrites B → Lost Update.
+ 
+    Safe mode  (safe_mode=true):
+        Txn A  →  START TXN  →  SELECT … FOR UPDATE (acquires row lock)  →  sleep 2 s  →  UPDATE  →  COMMIT
+        Txn B  →  START TXN  →  SELECT … FOR UPDATE  →  BLOCKED until A commits  →  UPDATE  →  COMMIT
+        Sequential execution — no data loss.
+    """
+    conn = None
+    try:
+        data        = request.json
+        safe_mode   = bool(data.get("safe_mode", False))
+        producer_id = int(data.get("producer_id", 4))
+        product_id  = int(data.get("product_id", 10))
+        value_a     = float(data.get("value_a", 40))
+        value_b     = float(data.get("value_b", 35))
+        init_price  = float(data.get("initial_price", 10))
+ 
+        # ── Step 1: reset price to initial value ──────────────────────────
+        conn   = get_db_connection()
+        cur    = conn.cursor()
+        cur.execute(
+            "UPDATE Producer_Product SET price_before_tax = %s "
+            "WHERE producer_id = %s AND product_id = %s",
+            (init_price, producer_id, product_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        conn = None
+ 
+        # ── Step 2: run the two concurrent transactions ───────────────────
+        logs      = []
+        log_lock  = threading.Lock()
+        t0        = time.time()
+ 
+        def ts():
+            return round(time.time() - t0, 2)
+ 
+        def log(txn, msg):
+            with log_lock:
+                logs.append({"txn": txn, "msg": msg, "t": ts()})
+ 
+        def transaction_a():
+            c = get_db_connection()
+            c.autocommit = False
+            cr = c.cursor()
+            try:
+                cr.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
+                cr.execute("START TRANSACTION")
+                if safe_mode:
+                    cr.execute(
+                        "SELECT price_before_tax FROM Producer_Product "
+                        "WHERE producer_id = %s AND product_id = %s FOR UPDATE",
+                        (producer_id, product_id)
+                    )
+                else:
+                    cr.execute(
+                        "SELECT price_before_tax FROM Producer_Product "
+                        "WHERE producer_id = %s AND product_id = %s",
+                        (producer_id, product_id)
+                    )
+                val = cr.fetchone()[0]
+                if safe_mode:
+                    log("A", f"Transaction A: SELECT … FOR UPDATE → locked row, reads <span class='val'>₹{val}</span>")
+                else:
+                    log("A", f"Transaction A: SELECT → reads <span class='val'>₹{val}</span> (no lock)")
+                time.sleep(2)
+                cr.execute(
+                    "UPDATE Producer_Product SET price_before_tax = %s "
+                    "WHERE producer_id = %s AND product_id = %s",
+                    (value_a, producer_id, product_id)
+                )
+                log("A", f"Transaction A: UPDATE price → <span class='val'>₹{value_a}</span>")
+                c.commit()
+                log("A", f"✅ Transaction A: COMMIT successful")
+            except Exception as e:
+                c.rollback()
+                log("A", f"❌ Transaction A ERROR: {e}")
+            finally:
+                cr.close(); c.close()
+ 
+        def transaction_b():
+            time.sleep(0.35)          # ensure A starts and locks first
+            c = get_db_connection()
+            c.autocommit = False
+            cr = c.cursor()
+            try:
+                cr.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
+                cr.execute("START TRANSACTION")
+                if safe_mode:
+                    log("B", "Transaction B: SELECT … FOR UPDATE → row locked by A, waiting…")
+                    cr.execute(
+                        "SELECT price_before_tax FROM Producer_Product "
+                        "WHERE producer_id = %s AND product_id = %s FOR UPDATE",
+                        (producer_id, product_id)
+                    )
+                    # reaches here only after A releases the lock
+                    val = cr.fetchone()[0]
+                    log("B", f"Transaction B: lock released by A, now reads <span class='val'>₹{val}</span>")
+                else:
+                    cr.execute(
+                        "SELECT price_before_tax FROM Producer_Product "
+                        "WHERE producer_id = %s AND product_id = %s",
+                        (producer_id, product_id)
+                    )
+                    val = cr.fetchone()[0]
+                    log("B", f"Transaction B: SELECT → reads <span class='val'>₹{val}</span> (same as A — race!)")
+ 
+                cr.execute(
+                    "UPDATE Producer_Product SET price_before_tax = %s "
+                    "WHERE producer_id = %s AND product_id = %s",
+                    (value_b, producer_id, product_id)
+                )
+                log("B", f"Transaction B: UPDATE price → <span class='val'>₹{value_b}</span>")
+                c.commit()
+                log("B", f"✅ Transaction B: COMMIT successful")
+            except Exception as e:
+                c.rollback()
+                log("B", f"❌ Transaction B ERROR: {e}")
+            finally:
+                cr.close(); c.close()
+ 
+        t_a = threading.Thread(target=transaction_a)
+        t_b = threading.Thread(target=transaction_b)
+        t_a.start(); t_b.start()
+        t_a.join();  t_b.join()
+ 
+        # ── Step 3: read final value ──────────────────────────────────────
+        conn   = get_db_connection()
+        cur    = conn.cursor()
+        cur.execute(
+            "SELECT price_before_tax FROM Producer_Product "
+            "WHERE producer_id = %s AND product_id = %s",
+            (producer_id, product_id)
+        )
+        final_val = float(cur.fetchone()[0])
+        cur.close()
+ 
+        logs.sort(key=lambda x: x["t"])
+ 
+        # Lost update: in unsafe mode A commits last → overwrites B
+        # B's update is the "lost" one when final == value_a
+        lost_update = (not safe_mode) and (abs(final_val - value_a) < 0.01)
+ 
+        return jsonify({
+            "logs":        [{"txn": l["txn"], "msg": l["msg"]} for l in logs],
+            "final_value": final_val,
+            "lost_update": lost_update,
+            "safe_mode":   safe_mode
+        }), 200
+ 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            try: conn.close()
+            except: pass
+ 
+ 
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Route not found"}), 404
-
+ 
 @app.errorhandler(500)
 def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
-
-
+ 
+ 
 if __name__ == "__main__":
     app.run(debug=True)
