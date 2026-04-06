@@ -1419,6 +1419,8 @@ def customer_orders(customer_id):
             ORDER BY o.order_id DESC
         """, (customer_id,))
         orders = cursor.fetchall()
+
+        
         for order in orders:
             cursor.execute("""
                 SELECT oi.quantity, oi.unit_price, oi.unit_price_with_tax, p.product_name
