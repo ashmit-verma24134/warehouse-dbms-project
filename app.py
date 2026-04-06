@@ -478,10 +478,22 @@ def warehouse_dashboard(warehouse_id):
         for o in customer_orders:
             if o['total_amount']:
                 o['total_amount'] = float(o['total_amount'])
+        
+        cursor.execute("""
+            SELECT pcr.change_id, pr.producer_name, p.product_name,
+                   pcr.old_price, pcr.new_price, pcr.created_at
+            FROM Price_Change_Request pcr
+            JOIN Producer pr ON pcr.producer_id = pr.producer_id
+            JOIN Product   p ON pcr.product_id   = p.product_id
+            WHERE pcr.status = 'Pending'
+            ORDER BY pcr.created_at DESC
+        """)
+        price_change_reqs = cursor.fetchall()
+        
         return render_template("admin/admin.html",
             warehouse=warehouse, catalogue=catalogue,
             requests=requests_list, price_alerts=price_alerts,
-            customer_orders=customer_orders)
+            customer_orders=customer_orders, price_change_reqs=price_change_reqs)
     except Exception as e:
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
@@ -541,8 +553,59 @@ def accept_price_change(warehouse_id, request_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
- 
- 
+
+@app.route("/warehouse/<int:warehouse_id>/approve-price-change/<int:change_id>", methods=["POST"])
+def approve_price_change(warehouse_id, change_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        conn.start_transaction()
+        
+        cursor.execute("SELECT * FROM Price_Change_Request WHERE change_id=%s AND status='Pending'", (change_id,))
+        req = cursor.fetchone()
+        if not req:
+            flash("Request not found or already processed.", "warning")
+            return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
+            
+        cursor.execute(
+            "UPDATE Producer_Product SET price_before_tax=%s WHERE producer_id=%s AND product_id=%s",
+            (req["new_price"], req["producer_id"], req["product_id"])
+        )
+        
+        cursor.execute(
+            "UPDATE Price_Change_Request SET status='Approved', resolved_at=CURRENT_TIMESTAMP WHERE change_id=%s",
+            (change_id,)
+        )
+        conn.commit()
+        flash("✓ Price change approved. Customer store updated.", "success")
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f"Error: {str(e)}", "danger")
+    finally:
+        if conn: conn.close()
+    return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
+
+@app.route("/warehouse/<int:warehouse_id>/reject-price-change/<int:change_id>", methods=["POST"])
+def reject_price_change(warehouse_id, change_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE Price_Change_Request SET status='Rejected', resolved_at=CURRENT_TIMESTAMP WHERE change_id=%s AND status='Pending'",
+            (change_id,)
+        )
+        conn.commit()
+        flash("✗ Price change rejected.", "warning")
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f"Error: {str(e)}", "danger")
+    finally:
+        if conn: conn.close()
+    return redirect(url_for("warehouse_dashboard", warehouse_id=warehouse_id))
+
+
 @app.route("/warehouse/<int:warehouse_id>/cancel-request/<int:request_id>", methods=["POST"])
 def cancel_request(warehouse_id, request_id):
     conn = None
@@ -898,9 +961,19 @@ def producer_dashboard(producer_id):
             WHERE b.producer_id = %s ORDER BY b.arrival_date DESC
         """, (producer_id,))
         shipments = cursor.fetchall()
+        
+        cursor.execute("""
+            SELECT pcr.change_id, p.product_name, pcr.old_price, pcr.new_price, pcr.status, pcr.created_at, pcr.resolved_at
+            FROM Price_Change_Request pcr
+            JOIN Product p ON pcr.product_id = p.product_id
+            WHERE pcr.producer_id = %s AND pcr.status IN ('Pending', 'Rejected')
+            ORDER BY pcr.created_at DESC
+        """, (producer_id,))
+        price_changes = cursor.fetchall()
+        
         return render_template("producer/producer.html",
             producer=producer, products=products,
-            requests=requests_list, shipments=shipments)
+            requests=requests_list, shipments=shipments, price_changes=price_changes)
     except Exception as e:
         return f"<h2>Dashboard error: {str(e)} <a href=/login>Back to Login</a></h2>", 500
     finally:
@@ -952,8 +1025,22 @@ def add_product(producer_id):
     finally:
         if conn: conn.close()
     return redirect(url_for("producer_dashboard", producer_id=producer_id))
- 
- 
+
+@app.route("/producer/dismiss-alert/<int:change_id>", methods=["POST"])
+def dismiss_price_alert(change_id):
+    conn = None
+    producer_id = request.form.get("producer_id", 1)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM Price_Change_Request WHERE change_id=%s AND status='Rejected'", (change_id,))
+        conn.commit()
+    except Exception as e:
+        flash(f"Error: {str(e)}", "danger")
+    finally:
+        if conn: conn.close()
+    return redirect(url_for("producer_dashboard", producer_id=producer_id))
+
 @app.route("/producer/change-price/<int:producer_id>", methods=["POST"])
 def change_price(producer_id):
     conn = None
@@ -971,20 +1058,24 @@ def change_price(producer_id):
         )
         old       = cursor.fetchone()
         old_price = float(old["price_before_tax"]) if old else 0
+        
+        # Check if there is already a pending request for this product
         cursor.execute(
-            "UPDATE Producer_Product SET price_before_tax=%s WHERE producer_id=%s AND product_id=%s",
-            (new_price, producer_id, product_id)
+            "SELECT change_id FROM Price_Change_Request WHERE producer_id=%s AND product_id=%s AND status='Pending'",
+            (producer_id, product_id)
         )
-        cursor.execute("""
-            SELECT COUNT(*) AS cnt FROM Restock_Request
-            WHERE producer_id=%s AND product_id=%s AND status='Pending'
-        """, (producer_id, product_id))
-        affected = cursor.fetchone()["cnt"]
+        if cursor.fetchone():
+            flash("You already have a pending price change request for this product.", "warning")
+            return redirect(url_for("producer_dashboard", producer_id=producer_id))
+            
+        cursor.execute(
+            "INSERT INTO Price_Change_Request (producer_id, product_id, old_price, new_price) VALUES (%s, %s, %s, %s)",
+            (producer_id, product_id, old_price, new_price)
+        )
+        
         conn.commit()
-        msg = f"✓ Price updated ₹{old_price:.2f} → ₹{new_price:.2f}."
-        if affected > 0:
-            msg += f" ⚠ {affected} pending request(s) will see a price-change alert."
-        flash(msg, "success")
+        msg = f"⏳ Price change request (₹{old_price:.2f} → ₹{new_price:.2f}) submitted. Awaiting admin approval."
+        flash(msg, "warning")
     except Exception as e:
         if conn: conn.rollback()
         flash(f"Error: {str(e)}", "danger")

@@ -443,6 +443,29 @@
     </div>
   </div>
 
+  <!-- PRICE CHANGE NOTIFICATIONS -->
+  {% if price_changes %}
+  <div class="grid-full" style="margin-bottom:24px;">
+    {% for pc in price_changes %}
+      {% if pc.status == 'Rejected' %}
+      <div style="background:#fdecea; border:1px solid #b91c1c; border-left:4px solid #b91c1c; border-radius:8px; padding:12px 16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong style="color:#b91c1c;">Price Change Declined:</strong> Your request to change the price of <strong>{{ pc.product_name }}</strong> from ₹{{ "%.2f"|format(pc.old_price) }} to ₹{{ "%.2f"|format(pc.new_price) }} was declined by admin. Contact warehouse for more info.
+        </div>
+        <form method="POST" action="/producer/dismiss-alert/{{ pc.change_id }}" style="margin:0;">
+          <input type="hidden" name="producer_id" value="{{ producer.producer_id }}"/>
+          <button type="submit" style="background:transparent; border:none; color:#b91c1c; font-size:1.5rem; cursor:pointer; padding:0 8px; line-height:1;" title="Dismiss">&times;</button>
+        </form>
+      </div>
+      {% elif pc.status == 'Pending' %}
+      <div style="background:var(--gold-light); border:1px solid var(--gold); border-left:4px solid var(--gold); border-radius:8px; padding:12px 16px; margin-bottom:10px;">
+        <strong style="color:var(--gold);">⏳ Pending Approval:</strong> Your request to change the price of <strong>{{ pc.product_name }}</strong> from ₹{{ "%.2f"|format(pc.old_price) }} to ₹{{ "%.2f"|format(pc.new_price) }} is awaiting admin approval. It will take effect once approved.
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- ROW 1: PENDING REQUESTS + PRODUCT CATALOGUE -->
   <div class="grid-two">
 
@@ -514,7 +537,7 @@
       </div>
       <div class="card-body">
         <p style="color:var(--ink2);font-size:0.82rem;margin-bottom:16px;line-height:1.6;">
-          Update the price of one of your products. Any warehouse with a <strong>Pending</strong> request will see a price-change alert and can accept or cancel.
+          Submit a request to update the price of one of your products. <strong style="color:var(--gold);">Price changes require admin approval</strong> before they reflect in the customer catalogue.
         </p>
         <form method="POST" action="/producer/change-price/{{ producer.producer_id }}">
           <div class="form-group">

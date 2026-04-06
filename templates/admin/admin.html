@@ -201,6 +201,9 @@
     <a href="/warehouse/{{ warehouse.warehouse_id }}/analytics" class="nav-link">
       📊 Analytics
     </a>
+    <a href="/concurrency" class="nav-link" style="background:rgba(235,87,87,0.1);color:#eb5757;border-color:rgba(235,87,87,0.3);">
+      ⚡ Concurrency Lab
+    </a>
   </nav>
 
   <div class="header-meta">
@@ -230,6 +233,36 @@
     <h1>{{ warehouse.warehouse_name }}<br/><em>Admin Dashboard</em></h1>
     <div class="hero-sub">Manage restock · Monitor customer orders · Control budget</div>
   </div>
+
+  <!-- PENDING PRICE CHANGE REQUESTS -->
+  {% if price_change_reqs %}
+  <div style="margin-bottom:20px;">
+    <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold);font-weight:600;margin-bottom:8px;">
+      ⏳ {{ price_change_reqs|length }} Pending Price Change{{ 's' if price_change_reqs|length > 1 }}
+    </div>
+    {% for req in price_change_reqs %}
+    <div class="alert-banner" style="background:var(--surface); border:1px solid var(--gold); border-left:4px solid var(--gold);">
+      <div>
+        <div class="alert-title" style="color:var(--gold);">Producer Price Change Request</div>
+        <div class="alert-desc">
+          <strong style="color:var(--ink)">{{ req.producer_name }}</strong> wants to change price of
+          <strong style="color:var(--ink)">{{ req.product_name }}</strong><br>
+          <span style="font-family:'DM Mono',monospace;text-decoration:line-through;color:var(--ink2)">₹{{ "%.2f"|format(req.old_price) }}</span>
+          → <span style="font-family:'DM Mono',monospace;color:var(--gold);font-weight:bold;">₹{{ "%.2f"|format(req.new_price) }}</span>
+        </div>
+      </div>
+      <div class="alert-acts">
+        <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/approve-price-change/{{ req.change_id }}">
+          <button class="btn-accept" type="submit">✓ Approve</button>
+        </form>
+        <form method="POST" action="/warehouse/{{ warehouse.warehouse_id }}/reject-price-change/{{ req.change_id }}">
+          <button class="btn-reject" type="submit">✗ Reject</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <!-- PRICE ALERTS -->
   {% if price_alerts %}
